@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     }
 
     // Accept either an email address or a plain username as the identifier.
-    // In production, look up the user by email OR username in the database.
+    // In production, query the database for users where email === identifier OR username === identifier.
     const identifier = username.trim();
     const isEmail = identifier.includes("@");
 
@@ -24,6 +24,10 @@ export async function POST(request: Request) {
       "demo@relay.pro",
       "demo",
       "mercer",
+      "sarah@relay.pro",
+      "sarah",
+      "marcus@relay.pro",
+      "marcus",
     ];
 
     if (!validIdentifiers.includes(identifier.toLowerCase()) && password.length < 6) {
@@ -36,11 +40,11 @@ export async function POST(request: Request) {
     const userId = "usr_" + Buffer.from(identifier).toString("hex").substring(0, 8);
     const displayName =
       identifier.charAt(0).toUpperCase() + identifier.slice(1).split("@")[0];
-    const email = isEmail ? identifier : `${identifier}@relay.pro`;
-    const tokenPayload = `${userId}:${email}:${displayName}`;
+    const email = isEmail ? identifier : null;
+    const tokenPayload = `${userId}:${email || identifier}:${displayName}`;
     const token = Buffer.from(tokenPayload).toString("base64");
 
-    return NextResponse.json({
+    return NextResponse.json<AuthResponseData>({
       token,
       user: {
         id: userId,
@@ -54,7 +58,7 @@ export async function POST(request: Request) {
     });
   } catch (e: any) {
     return NextResponse.json(
-      { error: e.message || "Login failed" },
+      { error: e.message || "Sign in failed" },
       { status: 500 }
     );
   }

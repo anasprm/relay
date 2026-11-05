@@ -15,6 +15,27 @@ export interface User {
   anonymous?: boolean;
 }
 
+export interface AuthRequest {
+  username: string;
+  password: string;
+  email?: string | null;
+  inviteCode?: string | null;
+}
+
+export interface AuthResponseData {
+  token: string;
+  user: User;
+}
+
+export interface RecoveryRequest {
+  email: string;
+}
+
+export interface RecoveryResponse {
+  message: string;
+  recoveryId?: string;
+}
+
 export interface Attachment {
   url: string;
   name: string;

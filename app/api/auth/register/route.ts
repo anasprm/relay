@@ -3,11 +3,11 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { username, password, name, inviteCode } = body;
+    const { username, password, name, email, inviteCode } = body;
 
     if (!username || !password) {
       return NextResponse.json(
-        { error: "Username or email and password are required" },
+        { error: "Username and password are required" },
         { status: 400 }
       );
     }
@@ -30,23 +30,22 @@ export async function POST(request: Request) {
     const identifier = username.trim();
     const isEmail = identifier.includes("@");
 
-    // Email is optional — if the user registers with a plain username,
-    // email is stored as null and can be added later.
-    const email = isEmail ? identifier : null;
+    // Email is strictly optional — registration succeeds with username + password alone.
+    const userEmail = isEmail ? identifier : (email || null);
 
     const userId = "usr_" + Buffer.from(identifier).toString("hex").substring(0, 8);
     const displayName =
       name || identifier.charAt(0).toUpperCase() + identifier.slice(1).split("@")[0];
-    const tokenPayload = `${userId}:${email || identifier}:${displayName}`;
+    const tokenPayload = `${userId}:${userEmail || identifier}:${displayName}`;
     const token = Buffer.from(tokenPayload).toString("base64");
 
-    return NextResponse.json({
+    return NextResponse.json<AuthResponseData>({
       token,
       user: {
         id: userId,
         username: isEmail ? identifier.split("@")[0] : identifier,
         displayName,
-        email,
+        email: userEmail,
         status: "online",
         avatar:
           "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
@@ -55,7 +54,7 @@ export async function POST(request: Request) {
   } catch (e: any) {
     console.error("[Registration Error]", e.message);
     return NextResponse.json(
-      { error: e.message || "Registration failed" },
+      { error: e.message || "Sign up failed" },
       { status: 500 }
     );
   }
