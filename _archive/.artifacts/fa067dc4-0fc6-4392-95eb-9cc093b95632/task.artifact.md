@@ -1,4 +1,0 @@
-- `[x]` Research user pain points for Instagram and WhatsApp hybrids
-- `[x]` Design the hybrid feature set (IG visual discovery + WA instant messaging + anti-cliché AI utilities)
-- `[x]` Build the comprehensive HTML concept mockup (`Valiyakath_Ultimate_Hybrid_Concept.html`)
-- `[x]` Document strategy and features in `research_and_strategy.artifact.md`

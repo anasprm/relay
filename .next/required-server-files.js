@@ -353,8 +353,8 @@ self.__SERVER_FILES_MANIFEST={
     },
     "distDirRoot": ".next"
   },
-  "appDir": "C:\\Users\\anasp\\Desktop\\relay new\\web",
-  "relativeAppDir": "web",
+  "appDir": "C:\\Users\\anasp\\Desktop\\relay new",
+  "relativeAppDir": "",
   "files": [
     ".next\\package.json",
     ".next\\routes-manifest.json",
