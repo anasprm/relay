@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { username, password, name, fullName, email, recoveryEmail, inviteCode } = body;
+    const { username, password, name, fullName, email, recoveryEmail } = body;
 
     const identifier = (username || email || "").trim();
     const displayName = (fullName || name || identifier).trim();
@@ -25,14 +25,6 @@ export async function POST(request: Request) {
     if (typeof password !== "string" || password.length < 6) {
       return NextResponse.json(
         { error: "Password must be at least 6 characters" },
-        { status: 400 }
-      );
-    }
-
-    // Optional invite code validation
-    if (inviteCode && !["RELAY2026", "FAMILY", "WORKSPACE"].includes(inviteCode.toUpperCase())) {
-      return NextResponse.json(
-        { error: "Invalid invite code" },
         { status: 400 }
       );
     }
