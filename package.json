@@ -1,25 +1,28 @@
 {
-  "name": "relay-messenger",
+  "name": "web",
   "version": "1.0.0",
   "private": true,
-  "description": "Relay — enterprise-grade realtime messaging workspace",
-  "workspaces": [
-    "server",
-    "web"
-  ],
   "scripts": {
-    "dev": "concurrently -k -n server,web -c blue,magenta \"npm:dev:server\" \"npm:dev:web\"",
-    "dev:server": "npm run dev -w server",
-    "dev:web": "npm run dev -w web",
-    "build": "npm run build -w web",
-    "start": "concurrently -k -n server,web -c blue,magenta \"npm:start:server\" \"npm:start:web\"",
-    "start:server": "npm run start -w server",
-    "start:web": "npm run start -w web"
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint",
+    "analyze": "next build && npx next-bundle-analyzer"
+  },
+  "dependencies": {
+    "lucide-react": "^1.61.0",
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "socket.io-client": "^4.8.4"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
-  },
-  "engines": {
-    "node": ">=20.11"
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "idb": "^8.0.4",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.0"
   }
 }

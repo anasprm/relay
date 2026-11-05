@@ -1,0 +1,39 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/auth/layout,_N_T_/auth/register/layout,_N_T_/auth/register/page,_N_T_/auth/register"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/auth/register/__PAGE__"
+  ],
+  "prefetchHints": {
+    "hints": 64,
+    "slots": {
+      "children": {
+        "hints": 96,
+        "slots": {
+          "children": {
+            "hints": 96,
+            "slots": {
+              "children": {
+                "hints": 160,
+                "slots": null
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/abc711843b369004d9bde0697d9f6b820cf7e328f65651e650b8db4212b8b2f7/$/auth/register",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/auth/register/page"
+    },
+    "isFallback": false
+  }
+}
