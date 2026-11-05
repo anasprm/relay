@@ -1,20 +1,44 @@
 "use client";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Logo } from "@/components/ui/Logo";
 import {
+  ArrowRight,
+  Bell,
+  Check,
+  ChevronDown,
+  FileText,
+  FolderPlus,
+  Gift,
+  Hash,
+  History,
+  Home,
+  Image as ImageIcon,
+  Lock,
   MessageSquarePlus,
+  MoreVertical,
+  Paperclip,
+  Phone,
+  Play,
   Search,
+  Send,
+  Settings,
+  ShieldCheck,
+  Smile,
+  Star,
+  UserPlus,
   UserRound,
   Users,
   X,
-  Send,
-  Paperclip,
-  Smile,
-  MoreVertical,
-  Star,
+  Video,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Conversation, Message, User } from "@/lib/types";
@@ -208,7 +232,17 @@ const MOCK_MESSAGES: Message[] = [
 ];
 
 /* -------------------------------------------------------------------------
-   Components
+   Simple emoji list for the picker
+   ------------------------------------------------------------------------- */
+const EMOJIS = [
+  "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🥲", "😊", "😇", "🙂", "🙃", "😉",
+  "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗",
+  "🤭", "🤫", "🤔", "🫡", "😐", "😑", "😶", "🫨", "😏", "😒", "🙄", "😬", "🤥", "😌",
+  "😮", "😯", "😲", "🥳", "😵", "🤯", "😇", "🙏", "🫶", "🤝", "👋", "🤚", "🖐", "✋",
+];
+
+/* -------------------------------------------------------------------------
+   Subcomponents
    ------------------------------------------------------------------------- */
 
 function Avatar({ user, size = 40 }: { user: User; size?: number }) {
@@ -226,6 +260,7 @@ function Avatar({ user, size = 40 }: { user: User; size?: number }) {
 
 function MessageBubble({ message, isMe }: { message: Message; isMe: boolean }) {
   const time = new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
   return (
     <div
       className={cn(
@@ -240,13 +275,19 @@ function MessageBubble({ message, isMe }: { message: Message; isMe: boolean }) {
       )}
       <div
         className={cn(
-          "rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap break-words shadow-sm",
+          "rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap break-words shadow-sm relative",
           isMe
             ? "bg-cyan-600 text-white rounded-tr-none"
             : "bg-white/5 border border-white/10 text-slate-200 rounded-tl-none"
         )}
       >
         {message.text}
+        {message.attachment && (
+          <div className="mt-2 flex items-center gap-2">
+            <ImageIcon className="h-4 w-4 text-slate-400" />
+            <span className="text-[10px] text-slate-300">{message.attachment.name}</span>
+          </div>
+        )}
         <div className={`text-[10px] mt-1 text-right ${isMe ? "text-cyan-200/70" : "text-slate-400/70"}`}>
           {time}
         </div>
@@ -256,6 +297,283 @@ function MessageBubble({ message, isMe }: { message: Message; isMe: boolean }) {
           {MOCK_USER.displayName.charAt(0).toUpperCase()}
         </div>
       )}
+    </div>
+  );
+}
+
+function CopilotBriefPanel({
+  activeConversation,
+  messages,
+  onSummarize,
+  onExtractTasks,
+}: {
+  activeConversation: Conversation | null;
+  messages: Message[];
+  onSummarize?: () => void;
+  onExtractTasks?: () => void;
+}) {
+  const [summary, setSummary] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleSummarize = useCallback(() => {
+    if (!onSummarize) return;
+    setLoading(true);
+    onSummarize();
+    setTimeout(() => {
+      setSummary("Key discussion points: Glassmorphic UI architecture, WebRTC scaling, and Vercel deployment readiness.");
+      setTasks(["Review deployment logs on Vercel production dashboard", "Verify cryptographic watermarking on shared media assets"]);
+      setLoading(false);
+    }, 1200);
+  }, [onSummarize]);
+
+  const handleExtractTasks = useCallback(() => {
+    if (!onExtractTasks) return;
+    setLoading(true);
+    onExtractTasks();
+    setTimeout(() => {
+      setTasks(["Review deployment logs", "Verify cryptographic watermarking", "Update API documentation"]);
+      setSummary("Extracted actionable tasks from thread messages.");
+      setLoading(false);
+    }, 1200);
+  }, [onExtractTasks]);
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Header */}
+      <div className="flex h-16 shrink-0 items-center justify-between bg-[#0a0a0c]/30 border-b border-white/5 px-4">
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-6 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold">
+            AI
+          </div>
+          <span className="font-semibold text-sm text-white">Relay Copilot</span>
+        </div>
+        <button className="p-1.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Close">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Brief */}
+      <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+        <h3 className="font-semibold text-xs text-white mb-2">Active Conversation Brief</h3>
+        {loading ? (
+          <div className="flex flex-col gap-2">
+            <div className="h-3 w-1/2 bg-white/10 rounded animate-pulse" />
+            <div className="h-3 w-1/3 bg-white/10 rounded animate-pulse" />
+          </div>
+        ) : null}
+        {!loading && activeConversation && summary ? (
+          <div className="space-y-3">
+            <div className="flex items-start gap-2">
+              <div className="h-2 w-2 rounded-full bg-emerald-500 mt-1" />
+              <div className="text-xs text-slate-300 leading-relaxed">
+                <span className="font-medium text-white">Summary:</span> {summary}
+              </div>
+            </div>
+            {tasks.length > 0 && (
+              <div>
+                <p className="text-[10px] font-medium text-slate-400 mb-1">Action Items:</p>
+                <ul className="space-y-1">
+                  {tasks.map((task, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-slate-200">
+                      <Check className="h-3 w-3 mt-0.5 text-cyan-400 shrink-0" />
+                      <span>{task}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : null}
+        {!loading && activeConversation && !summary ? (
+          <div className="space-y-3">
+            <div className="flex items-start gap-2">
+              <div className="h-2 w-2 rounded-full bg-emerald-500 mt-1" />
+              <div className="text-xs text-slate-300 leading-relaxed">
+                <span className="font-medium text-white">Summary:</span> Active discussion on Relay glassmorphic architecture and WebRTC scaling.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <div className="h-2 w-2 rounded-full bg-cyan-500 mt-1" />
+              <div className="text-xs text-slate-300 leading-relaxed">
+                <span className="font-medium text-white">Action Items:</span> Review deployment logs on Vercel production dashboard.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <div className="h-2 w-2 rounded-full bg-rose-500 mt-1" />
+              <div className="text-xs text-slate-300 leading-relaxed">
+                <span className="font-medium text-white">Urgency:</span> Medium — respond within 24 hours.
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {!loading && !activeConversation ? (
+          <div className="text-xs text-slate-500 italic">Select a conversation to see AI-powered insights.</div>
+        ) : null}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+        <h3 className="font-semibold text-xs text-white mb-2">Quick Actions</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={handleSummarize}
+            disabled={loading}
+            className={cn(
+              "px-3 py-2 rounded-lg text-xs font-medium transition-all",
+              loading ? "bg-white/5 text-slate-400 cursor-not-allowed" : "bg-white/10 border border-white/10 text-cyan-300 hover:bg-white/20 hover:text-white"
+            )}
+          >
+            Summarize thread
+          </button>
+          <button
+            onClick={handleExtractTasks}
+            disabled={loading}
+            className={cn(
+              "px-3 py-2 rounded-lg text-xs font-medium transition-all",
+              loading ? "bg-white/5 text-slate-400 cursor-not-allowed" : "bg-white/10 border border-white/10 text-cyan-300 hover:bg-white/20 hover:text-white"
+            )}
+          >
+            Extract tasks
+          </button>
+        </div>
+      </div>
+
+      {/* AI Assistant footer */}
+      <div className="p-4 border-t border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xs font-bold">
+            A
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-sm text-white">Relay AI</h3>
+            <p className="text-xs text-slate-400">Online · Ready to help</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UserSearchModal({
+  open,
+  onClose,
+  onSelect,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (user: User) => void;
+}) {
+  const [query, setQuery] = useState("");
+
+  const users = [
+    { id: "usr_2", username: "elena_rostova", displayName: "Elena Rostova", accent: "rose", avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150", online: true, lastSeen: new Date().toISOString() },
+    { id: "usr_3", username: "marcus_vance", displayName: "Marcus Vance", accent: "cyan", avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150", online: false, lastSeen: new Date(Date.now() - 3600000).toISOString() },
+    { id: "usr_ai", username: "relay_ai", displayName: "Relay AI", accent: "emerald", avatarUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150", online: true, lastSeen: new Date().toISOString() },
+  ];
+
+  const filtered = users.filter((u) => u.displayName.toLowerCase().includes(query.toLowerCase()) || u.username.toLowerCase().includes(query.toLowerCase()));
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-[#0a0a0c]/90 border border-white/10 rounded-2xl p-6 shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-white">Add Participants</h2>
+          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Close">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search users…"
+            className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+            autoFocus
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          {filtered.length === 0 ? (
+            <p className="text-xs text-slate-500 text-center py-4">No users found</p>
+          ) : (
+            filtered.map((u) => (
+              <button
+                key={u.id}
+                onClick={() => { onSelect(u); onClose(); }}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors"
+              >
+                <div className="h-9 w-9 rounded-full overflow-hidden border border-white/10 shrink-0">
+                  <img src={u.avatarUrl || "https://ui-avatars.com/api/?name=User&background=06b6d4&color=fff"} alt={u.displayName} className="h-full w-full object-cover" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-sm text-white truncate">{u.displayName}</h3>
+                  <p className="text-xs text-slate-400 truncate">{u.username}</p>
+                </div>
+                <span className={`h-2 w-2 rounded-full ${u.online ? "bg-emerald-500" : "bg-slate-500"}`} />
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MoreOptionsMenu({
+  open,
+  onClose,
+  onClearChat,
+  onMute,
+  onLeaveGroup,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onClearChat?: () => void;
+  onMute?: () => void;
+  onLeaveGroup?: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-end">
+      <div className="w-56 bg-[#0a0a0c]/90 border border-white/10 rounded-2xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200">
+        {onClearChat && (
+          <button
+            onClick={() => { onClearChat(); onClose(); }}
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors"
+          >
+            <FileText className="h-4 w-4 text-slate-500 shrink-0" />
+            <span>Clear chat history</span>
+          </button>
+        )}
+        {onMute && (
+          <button
+            onClick={() => { onMute(); onClose(); }}
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors"
+          >
+            <Bell className="h-4 w-4 text-slate-500 shrink-0" />
+            <span>Mute notifications</span>
+          </button>
+        )}
+        <button
+          onClick={() => { onLeaveGroup?.(); onClose(); }}
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-rose-400 hover:bg-rose-500/10 transition-colors"
+        >
+          <Lock className="h-4 w-4 text-slate-500 shrink-0" />
+          <span>Leave group</span>
+        </button>
+        <button
+          onClick={onClose}
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors"
+        >
+          <X className="h-4 w-4 text-slate-500 shrink-0" />
+          <span>Cancel</span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -278,7 +596,13 @@ export default function ChatPage() {
   const [draft, setDraft] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread" | "favorites" | "groups">("all");
-  const [sidebarOpen, setSidebarOpen] = useState(typeof window === "undefined" ? true : window.innerWidth > 768);
+
+  // Interaction states
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showUserSearch, setShowUserSearch] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [fileInputRef, setFileInputRef] = useState<HTMLInputElement | null>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<{ name: string; url: string; size: number } | null>(null);
 
   // -----------------------------------------------------------------
   // Effects
@@ -299,6 +623,17 @@ export default function ChatPage() {
       }
     }, 100);
   }, [loading, user, token, router, conversations.length]);
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showEmojiPicker && !e.target.closest('[data-emoji-picker]')) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showEmojiPicker]);
 
   // -----------------------------------------------------------------
   // Derived
@@ -322,17 +657,22 @@ export default function ChatPage() {
     });
   }, [conversations, searchQuery, filter]);
 
-  const handleSend = (e: React.FormEvent) => {
+  // -----------------------------------------------------------------
+  // Handlers
+  // -----------------------------------------------------------------
+  const handleSend = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    if (!draft.trim()) return;
+    const text = draft.trim();
+    if (!text && !pendingAttachment) return;
+
     const newMessage: Message = {
       id: `msg_${Date.now()}`,
       conversationId: activeId || "conv_general_community",
       senderId: "usr_me",
       sender: MOCK_USER,
       kind: "text",
-      text: draft,
-      attachment: null,
+      text,
+      attachment: pendingAttachment ? { url: pendingAttachment.url, name: pendingAttachment.name, mime: "image/*", size: pendingAttachment.size, kind: "image" } : null,
       anonymous: false,
       ephemeral: false,
       viewOnce: false,
@@ -342,8 +682,12 @@ export default function ChatPage() {
       starred: false,
       createdAt: new Date().toISOString(),
     };
+
     setMessages((prev) => [...prev, newMessage]);
     setDraft("");
+    setPendingAttachment(null);
+    setShowEmojiPicker(false);
+
     setConversations((prev) =>
       prev.map((c) =>
         c.id === (activeId || "conv_general_community")
@@ -351,14 +695,40 @@ export default function ChatPage() {
           : c
       )
     );
-  };
+  }, [draft, pendingAttachment, activeId]);
 
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     setActiveId(null);
     setMessages([]);
     setDraft("");
     toast("Start a new conversation by entering a username or email", "info");
-  };
+  }, [toast]);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPendingAttachment({ name: file.name, url, size: file.size });
+    toast(`Attached: ${file.name}`, "success");
+  }, []);
+
+  const handleEmojiSelect = useCallback((emoji: string) => {
+    setDraft((prev) => prev + emoji);
+    setShowEmojiPicker(false);
+  }, []);
+
+  const handleRemoveAttachment = useCallback(() => {
+    setPendingAttachment(null);
+  }, []);
+
+  const handleClearChat = useCallback(() => {
+    setMessages([]);
+    toast("Chat cleared", "info");
+  }, [toast]);
+
+  const handleMute = useCallback(() => {
+    toast("Notifications muted", "info");
+  }, [toast]);
 
   if (loading) {
     return (
@@ -530,7 +900,7 @@ export default function ChatPage() {
                 <div>
                   <h2 className="font-medium text-sm text-white">{activeConversation.title || "Conversation"}</h2>
                   <p className="text-xs text-slate-400">
-                    {activeConversation.participantCount} members · {activeConversation.onlineIds?.filter(Boolean).length || 0} online
+                    {activeConversation.participantCount} members · Active
                   </p>
                 </div>
               </>
@@ -547,13 +917,25 @@ export default function ChatPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Call">
-              <Users className="h-5 w-5" />
+            <button
+              onClick={() => setShowMoreOptions((prev) => !prev)}
+              className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+              aria-label="More options"
+            >
+              <MoreVertical className="h-5 w-5" />
             </button>
-            <button className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Video">
-              <MessageSquarePlus className="h-5 w-5" />
+            <button
+              className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+              aria-label="Call"
+            >
+              <Phone className="h-5 w-5" />
             </button>
-            <MoreVertical className="h-5 w-5 text-slate-400" />
+            <button
+              className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+              aria-label="Video"
+            >
+              <Video className="h-5 w-5" />
+            </button>
           </div>
         </header>
 
@@ -584,21 +966,34 @@ export default function ChatPage() {
         {/* Message Input Bar */}
         <form onSubmit={handleSend} className="p-4 border-t border-white/10 bg-[#0a0a0c]/40 backdrop-blur-xl">
           <div className="flex items-end gap-2">
-            <button
-              type="button"
-              className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
-              aria-label="Attachments"
+            {/* Attachment */}
+            <label
+              className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors cursor-pointer"
+              aria-label="Attach file"
             >
               <Paperclip className="h-5 w-5" />
-            </button>
+              <input
+                type="file"
+                ref={setFileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept="image/*,application/pdf"
+              />
+            </label>
+            {/* Emoji */}
             <button
               type="button"
-              className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
-              aria-label="Emoji"
+              onClick={() => setShowEmojiPicker((prev) => !prev)}
+              className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors relative"
+              aria-label="Emoji picker"
             >
               <Smile className="h-5 w-5" />
+              {showEmojiPicker && (
+                <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />
+              )}
             </button>
-            <div className="flex-1">
+            {/* Text input */}
+            <div className="flex-1 relative">
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -613,13 +1008,45 @@ export default function ChatPage() {
                   }
                 }}
               />
+              {/* Emoji picker overlay */}
+              {showEmojiPicker && (
+                <div className="data-[emoji-picker] absolute bottom-[60px] left-0 w-full bg-[#0a0a0c]/90 border border-white/10 rounded-xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200 z-50">
+                  <div className="flex flex-wrap gap-1 max-h-48 overflow-y-auto">
+                    {EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => handleEmojiSelect(emoji)}
+                        className="h-8 w-8 rounded-lg text-lg hover:bg-white/5 transition-colors flex items-center justify-center"
+                        data-emoji-picker
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+            {/* Pending attachment preview */}
+            {pendingAttachment && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 animate-in fade-in zoom-in duration-200">
+                <ImageIcon className="h-4 w-4 text-cyan-400 shrink-0" />
+                <span className="text-xs text-slate-300 truncate max-w-[120px]">{pendingAttachment.name}</span>
+                <button
+                  onClick={handleRemoveAttachment}
+                  className="p-1 rounded hover:bg-white/10 text-slate-500 hover:text-rose-400 transition-colors"
+                  aria-label="Remove attachment"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+            {/* Send */}
             <button
               type="submit"
-              disabled={!draft.trim() || !activeId}
+              disabled={(!draft.trim() && !pendingAttachment) || !activeId}
               className={cn(
                 "px-5 py-2.5 rounded-xl text-white font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed",
-                draft.trim() && activeId
+                (draft.trim() || pendingAttachment) && activeId
                   ? "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-[0_0_15px_rgba(6,182,212,0.4)]"
                   : "bg-white/5 border border-white/10 text-slate-400"
               )}
@@ -633,73 +1060,40 @@ export default function ChatPage() {
       {/* ========================================================
          RIGHT — AI Copilot Panel
          ======================================================== */}
-      <aside className="hidden lg:flex flex-col w-80 bg-[#0a0a0c]/60 backdrop-blur-xl border-l border-white/10">
-        <div className="flex h-16 shrink-0 items-center justify-between bg-[#0a0a0c]/30 border-b border-white/5 px-4">
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold">
-              AI
-            </div>
-            <span className="font-semibold text-sm text-white">Relay Copilot</span>
-          </div>
-          <button className="p-1.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Close">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+      <CopilotBriefPanel
+        activeConversation={activeConversation}
+        messages={visibleMessages}
+        onSummarize={() => {}}
+        onExtractTasks={() => {}}
+      />
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-            <h3 className="font-semibold text-xs text-white mb-2">Active Conversation Brief</h3>
-            {activeConversation ? (
-              <div className="space-y-3">
-                <div className="flex items-start gap-2">
-                  <div className="h-2 w-2 rounded-full bg-emerald-500 mt-1" />
-                  <div className="text-xs text-slate-300 leading-relaxed">
-                    <span className="font-medium text-white">Summary:</span> Active discussion on Relay glassmorphic architecture and WebRTC scaling.
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="h-2 w-2 rounded-full bg-cyan-500 mt-1" />
-                  <div className="text-xs text-slate-300 leading-relaxed">
-                    <span className="font-medium text-white">Action Items:</span> Review deployment logs on Vercel production dashboard.
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="h-2 w-2 rounded-full bg-rose-500 mt-1" />
-                  <div className="text-xs text-slate-300 leading-relaxed">
-                    <span className="font-medium text-white">Urgency:</span> Medium — respond within 24 hours.
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-xs text-slate-500 italic">Select a conversation to see AI-powered insights.</div>
-            )}
-          </div>
-
-          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-            <h3 className="font-semibold text-xs text-white mb-2">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <button className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-cyan-300 hover:bg-white/10 transition-colors">
-                Summarize thread
-              </button>
-              <button className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-cyan-300 hover:bg-white/10 transition-colors">
-                Extract tasks
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xs font-bold">
-              A
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm text-white">Relay AI</h3>
-              <p className="text-xs text-slate-400">Online · Ready to help</p>
-            </div>
-          </div>
-        </div>
-      </aside>
+      {/* ========================================================
+         Modals
+         ======================================================== */}
+      <UserSearchModal
+        open={showUserSearch}
+        onClose={() => setShowUserSearch(false)}
+        onSelect={(u) => {
+          toast(`Added ${u.displayName} to conversation`, "success");
+          setShowUserSearch(false);
+        }}
+      />
+      <MoreOptionsMenu
+        open={showMoreOptions}
+        onClose={() => setShowMoreOptions(false)}
+        onClearChat={() => {
+          setMessages([]);
+          toast("Chat cleared", "info");
+        }}
+        onMute={() => {
+          toast("Notifications muted", "info");
+        }}
+        onLeaveGroup={() => {
+          toast("Left the group", "info");
+          setActiveId(null);
+          setShowMoreOptions(false);
+        }}
+      />
     </div>
   );
 }
