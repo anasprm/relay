@@ -2,7 +2,7 @@
 // Relay PWA Service Worker
 // =================
 
-const CACHE_NAME = 'relay-pwa-v2';
+const CACHE_NAME = 'relay-pwa-v3';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -10,7 +10,7 @@ self.addEventListener('install', (event) => {
       return cache.addAll(['/']);
     }),
   );
-  self.clients.claim();
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -23,7 +23,9 @@ self.addEventListener('activate', (event) => {
       ),
     ),
   );
-  self.clients.claim();
+  if (self.clients && typeof self.clients.claim === 'function') {
+    event.waitUntil(self.clients.claim());
+  }
 });
 
 self.addEventListener('fetch', (event) => {
