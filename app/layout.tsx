@@ -5,7 +5,6 @@ import { ThemeProvider } from '@/lib/ThemeProvider';
 import { UiStyleProvider } from '@/lib/UiStyleProvider';
 import { ToastProvider } from '@/lib/ToastProvider';
 
-// -------------------------------------------------------------------------
 export const metadata: Metadata = {
   title: {
     default: 'Relay — Secure Workspace Messaging',
@@ -22,6 +21,10 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'Relay',
   },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/pwa/icon-192x192.png',
+  },
 };
 
 export const viewport: Viewport = {
@@ -35,7 +38,6 @@ export const viewport: Viewport = {
   ],
 };
 
-// Inline the bootstrap payload for IndexedDB offline-first hydration.
 function bootstrapScript(): string {
   return `(window.__RELAY_BOOTSTRAP__ = ${JSON.stringify({ conversations: [], user: null })});`;
 }
@@ -70,7 +72,6 @@ const themeScript = `
           : 'official';
     document.documentElement.dataset.ui = ui;
 
-    // Register Service Worker for PWA offline capability
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
         navigator.serviceWorker.register('/sw.js').catch(function(err) {
@@ -82,7 +83,6 @@ const themeScript = `
 })();
 `;
 
-// -------------------------------------------------------------------------
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -90,6 +90,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/pwa/icon-192x192.png" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: bootstrapPayload }} />
       </head>
