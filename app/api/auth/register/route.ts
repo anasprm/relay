@@ -3,11 +3,21 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { username, password, name, email, inviteCode } = body;
+    const { username, password, name, fullName, email, recoveryEmail, inviteCode } = body;
 
-    if (!username || !password) {
+    const identifier = (username || email || "").trim();
+    const displayName = (fullName || name || identifier).trim();
+
+    if (!identifier) {
       return NextResponse.json(
-        { error: "Username and password are required" },
+        { error: "Username is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!password) {
+      return NextResponse.json(
+        { error: "Password is required" },
         { status: 400 }
       );
     }
@@ -27,23 +37,28 @@ export async function POST(request: Request) {
       );
     }
 
-    const identifier = username.trim();
-    const isEmail = identifier.includes("@");
+    // Check if username is already taken (mock check for demo users)
+    const takenUsernames = ["admin", "root", "support"];
+    if (takenUsernames.includes(identifier.toLowerCase())) {
+      return NextResponse.json(
+        { error: "Username already taken" },
+        { status: 400 }
+      );
+    }
 
-    // Email is strictly optional — registration succeeds with username + password alone.
-    const userEmail = isEmail ? identifier : (email || null);
+    const isEmail = identifier.includes("@");
+    const userEmail = isEmail ? identifier : (recoveryEmail || email || null);
+    const cleanUsername = isEmail ? identifier.split("@")[0] : identifier;
 
     const userId = "usr_" + Buffer.from(identifier).toString("hex").substring(0, 8);
-    const displayName =
-      name || identifier.charAt(0).toUpperCase() + identifier.slice(1).split("@")[0];
-    const tokenPayload = `${userId}:${userEmail || identifier}:${displayName}`;
+    const tokenPayload = `${userId}:${userEmail || cleanUsername}:${displayName}`;
     const token = Buffer.from(tokenPayload).toString("base64");
 
-    return NextResponse.json<AuthResponseData>({
+    return NextResponse.json({
       token,
       user: {
         id: userId,
-        username: isEmail ? identifier.split("@")[0] : identifier,
+        username: cleanUsername,
         displayName,
         email: userEmail,
         status: "online",
