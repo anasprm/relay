@@ -3,6 +3,7 @@
   "/_not-found/page": "/_not-found",
   "/api/auth/route": "/api/auth",
   "/api/conversations/route": "/api/conversations",
+  "/api/insights/[conversationId]/brief/route": "/api/insights/[conversationId]/brief",
   "/api/messages/route": "/api/messages",
   "/api/stories/route": "/api/stories",
   "/api/upload/route": "/api/upload",
