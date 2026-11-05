@@ -92,12 +92,6 @@ export function ChatShell() {
   const { toast } = useToast();
   const ownerId = user?.id;
 
-  // Redirect unauthenticated users to login page
-  if (!loading && !user && !token) {
-    router.replace('/login');
-    return null;
-  }
-
   // ---- Filter state for "All / Unread / Favorites / Groups / Muted" ----
   const [filter, setFilter] = useState<'all' | 'unread' | 'favorites' | 'groups' | 'muted'>('all');
 
@@ -140,6 +134,13 @@ export function ChatShell() {
     setStoryViewerGroup: setStoryViewerGroupRef,
     me: myStory,
   } = useStories({ socket, enabled: !!token && !!user });
+
+  // Redirect unauthenticated users inside useEffect (unconditional hook execution)
+  useEffect(() => {
+    if (!loading && !user && !token) {
+      router.replace('/login');
+    }
+  }, [loading, user, token, router]);
 
   // ---------------------------------------------------------------------
   // Effect 1: Auth check + cache bootstrap from server-rendered HTML
@@ -212,7 +213,7 @@ export function ChatShell() {
       }
     }, 30_000);
     return () => clearInterval(interval);
-  }, [cacheState, conversations, token]);
+  }, [cacheState, conversations, token, user]);
 
   // ---------------------------------------------------------------------
   // Effect 3: Load messages when active conversation changes
@@ -224,12 +225,12 @@ export function ChatShell() {
     }
     async function load() {
       try {
-        const cached = await getMessages(activeId, { limit: 200 });
-        const resp = await api.get(`/api/conversations/${activeId}/messages?limit=200`);
+        const cached = await getMessages(activeId!, { limit: 200 });
+        const resp = await api.get<{ messages: Message[] }>(`/api/conversations/${activeId}/messages?limit=200`);
         const serverMessages = resp.data.messages;
         const merged = [...cached];
         serverMessages.forEach((sm: Message) => {
-          const already = merged.find((m) => m.messageId === sm.messageId);
+          const already = merged.find((m) => m.id === sm.id || m.messageId === sm.messageId);
           if (!already) {
             merged.push(sm);
           }
@@ -242,7 +243,7 @@ export function ChatShell() {
       } catch (e) {
         console.error('[ChatShell] Message load error:', e);
         try {
-          const cached = await getMessages(activeId, { limit: 100 });
+          const cached = await getMessages(activeId!, { limit: 100 });
           setMessages(cached);
         } catch (fe) {
           setMessages([]);
@@ -258,9 +259,11 @@ export function ChatShell() {
   useEffect(() => {
     if (!token || !user) return;
     const client = createSocket(token);
+    if (!client) return;
+
     client.on('message:new', (message: any) => {
       cacheMessages(activeId || '', [{
-        messageId: message.id,
+        id: message.id,
         conversationId: message.conversationId,
         senderId: message.senderId,
         kind: message.kind,
@@ -268,54 +271,32 @@ export function ChatShell() {
         attachment: message.attachment || null,
         createdAt: message.createdAt,
         reactedBy: message.reactedBy || {},
-      }]).catch(() => {});
+      } as any]).catch(() => {});
       setMessages((prev) => {
-        const already = prev.some((m) => m.messageId === message.id);
+        const already = prev.some((m) => m.id === message.id);
         return already ? prev : [...prev, message];
       });
     });
     client.on('message:update', (message: any) => {
       setMessages((prev) =>
-        prev.map((m) => (m.messageId === message.messageId ? { ...m, ...message } : m))
+        prev.map((m) => (m.id === message.id ? { ...m, ...message } : m))
       );
     });
     client.on('messages:purged', (payload: { conversationId: string; ids: string[] }) => {
       if (payload.conversationId === activeId) {
-        setMessages((prev) => prev.filter((m) => !payload.ids.includes(m.messageId)));
+        setMessages((prev) => prev.filter((m) => !payload.ids.includes(m.id)));
       }
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.conversationId === payload.conversationId) {
-            c.lastMessage = c.lastMessage
-              ? { ...c.lastMessage, attachment: c.lastMessage.attachment ? c.lastMessage.attachment : null }
-              : null;
-          }
-          return c;
-        })
-      );
     });
     return () => {
       client.close();
     };
   }, [token, user, activeId]);
 
-  // ---------------------------------------------------------------------
-  // Effect 5: Refresh conversations list periodically
-  // ---------------------------------------------------------------------
-  useEffect(() => {
-    if (!token || !user || cacheState !== 'synching') return;
-    const interval = setInterval(async () => {
-      try {
-        const resp = await api.get<{ conversations: Conversation[] }>('/api/conversations');
-        setConversations(resp.data.conversations);
-      } catch (e) {
-        console.warn('[ChatShell] Conversation refresh error:', e);
-      }
-    }, 60_000);
-    return () => clearInterval(interval);
-  }, [token, user, cacheState, conversations]);
-
   const activeConversation = activeId ? conversations.find((c) => c.id === activeId || c.conversationId === activeId) : null;
+
+  if (loading) {
+    return <Splash label="Loading Relay..." />;
+  }
 
   // ---------------------------------------------------------------------
   // Render the Glassmorphic 3-pane layout with filter tabs
@@ -332,7 +313,6 @@ export function ChatShell() {
       cacheState={cacheState}
       filter={filter}
       onFilterChange={setFilter}
-      onTypingChange={(val) => {/* typing handled elsewhere */}}
     />
   );
 }
