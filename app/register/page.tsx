@@ -1,7 +1,5 @@
-import { AuthScreen } from '@/components/auth/AuthScreen';
+import { redirect } from 'next/navigation';
 
-export const metadata = { title: 'Create account' };
-
-export default function RegisterPage() {
-  return <AuthScreen mode="register" />;
+export default function AuthRegisterRedirect() {
+  redirect('/register');
 }

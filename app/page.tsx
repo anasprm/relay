@@ -11,7 +11,7 @@ export default function LandingPage() {
   const { user, loading } = useAuth();
   const [redirecting, setRedirecting] = useState(false);
 
-  // Show any one-shot auth notice (e.g. "wrong workspace") immediately
+  // Show any one-shot auth notice immediately
   useEffect(() => {
     const notice = consumeAuthNotice();
     if (notice && typeof window !== "undefined") {
@@ -29,9 +29,9 @@ export default function LandingPage() {
         setRedirecting(true);
         router.push("/chat");
       }
-    } else if (pathname !== "/auth/login") {
+    } else if (pathname !== "/login") {
       setRedirecting(true);
-      router.push("/auth/login");
+      router.push("/login");
     }
   }, [user, loading, redirecting, pathname, router]);
 
