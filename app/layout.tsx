@@ -16,6 +16,12 @@ export const metadata: Metadata = {
   applicationName: 'Relay',
   authors: [{ name: 'Muhammed Anas.v' }],
   creator: 'Muhammed Anas.v',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Relay',
+  },
 };
 
 export const viewport: Viewport = {
@@ -24,8 +30,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#eef1f4' },
-    { media: '(prefers-color-scheme: dark)', color: '#0b141a' },
+    { media: '(prefers-color-scheme: light)', color: '#000000' },
+    { media: '(prefers-color-scheme: dark)', color: '#000000' },
   ],
 };
 
@@ -35,10 +41,6 @@ function bootstrapScript(): string {
 }
 
 const bootstrapPayload = bootstrapScript();
-
-// The actual bootstrap data is injected by the server at build time
-// (via next/config or a middleware that replaces this string). For now
-// we embed an empty payload so the client cache boots fast without errors.
 
 const themeScript = `
 (function () {
@@ -67,6 +69,15 @@ const themeScript = `
           ? 'minimal'
           : 'official';
     document.documentElement.dataset.ui = ui;
+
+    // Register Service Worker for PWA offline capability
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js').catch(function(err) {
+          console.log('SW registration failed: ', err);
+        });
+      });
+    }
   } catch (error) {}
 })();
 `;
@@ -76,6 +87,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/pwa/icon-192x192.png" />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: bootstrapPayload }} />
       </head>
