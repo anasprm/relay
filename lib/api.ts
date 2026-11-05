@@ -4,7 +4,7 @@ import { siteScope } from './site';
 export const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_SERVER_URL ||
-  'http://localhost:4000'
+  (typeof window !== 'undefined' ? '' : 'http://localhost:4000')
 ).replace(/\/$/, '');
 
 const TOKEN_KEY = 'relay.token';
