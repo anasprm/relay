@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { username, password, inviteCode } = body;
+    const { username, password, name, inviteCode } = body;
 
     if (!username || !password) {
       return NextResponse.json(
@@ -12,14 +12,14 @@ export async function POST(request: Request) {
       );
     }
 
-    if (password.length < 6) {
+    if (typeof password !== "string" || password.length < 6) {
       return NextResponse.json(
         { error: "Password must be at least 6 characters" },
         { status: 400 }
       );
     }
 
-    // Optional invite code validation (demo: any code works, but accept common ones)
+    // Optional invite code validation
     if (inviteCode && !["RELAY2026", "FAMILY", "WORKSPACE"].includes(inviteCode.toUpperCase())) {
       return NextResponse.json(
         { error: "Invalid invite code" },
@@ -28,10 +28,9 @@ export async function POST(request: Request) {
     }
 
     const userId = "usr_" + Buffer.from(username).toString("hex").substring(0, 8);
-    const name =
-      username.charAt(0).toUpperCase() + username.slice(1).split("@")[0];
+    const displayName = name || username.charAt(0).toUpperCase() + username.slice(1).split("@")[0];
     const email = username.includes("@") ? username : `${username}@relay.pro`;
-    const tokenPayload = `${userId}:${email}:${name}`;
+    const tokenPayload = `${userId}:${email}:${displayName}`;
     const token = Buffer.from(tokenPayload).toString("base64");
 
     return NextResponse.json({
@@ -39,13 +38,14 @@ export async function POST(request: Request) {
       user: {
         id: userId,
         email,
-        name,
+        name: displayName,
         status: "online",
         avatar:
           "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
       },
     });
   } catch (e: any) {
+    console.error("[Registration Error]", e.message);
     return NextResponse.json(
       { error: e.message || "Registration failed" },
       { status: 500 }

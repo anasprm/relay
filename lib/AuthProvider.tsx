@@ -111,10 +111,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (username: string, password: string, inviteCode?: string) => {
+    async (
+      username: string,
+      password: string,
+      name?: string,
+      inviteCode?: string,
+    ) => {
       const response = await api.post<AuthResponse>('/api/auth/register', {
         username,
         password,
+        ...(name ? { name } : {}),
         ...(inviteCode ? { inviteCode } : {}),
       });
       writeNotice(null);
