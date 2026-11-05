@@ -1,0 +1,47 @@
+GTA V - MISSING FILES CHECKLIST
+(The USB copy is incomplete. These files/folders must be re-copied
+from the COMPLETE original game folder on the source PC.)
+
+USB game folder:  E:\Grand Theft Auto V
+
+---------------------------------------------------------------
+1) MISSING DLC PACK FILES (folders exist but are empty - no dlc.rpf)
+
+  patchday5ng
+  patchday6ng
+  patchday7ng
+  patchday8ng
+  patchday9ng
+  patchdayg9ecng
+
+Copy each missing dlc.rpf from the source PC:
+
+  SOURCE:   <original game>\update\x64\dlcpacks\<folder>\dlc.rpf
+  COPY TO:  E:\Grand Theft Auto V\update\x64\dlcpacks\<folder>\dlc.rpf
+
+Keep the folder names EXACTLY as above.
+Do NOT touch the small "g9ec" stub packs (six to a few hundred KB) -
+those sizes are normal.
+
+---------------------------------------------------------------
+2) MISSING AUDIO PACKS (whole folder branch is empty)
+
+  SOURCE:   <original game>\x64\audio         (entire folder incl. subfolders)
+  COPY TO:  E:\Grand Theft Auto V\x64
+
+This should include at least:
+  x64\audio\sfx\SCRIPT.rpf
+  x64\audio\sfx\RESIDENT.rpf
+  (and any other .rpf files inside the source x64\audio folder)
+
+---------------------------------------------------------------
+3) NOTES
+
+- E:\GTA V (the other folder on the USB) is completely empty -
+  it was an aborted copy attempt. Can be deleted later if not wanted.
+- Do NOT run the game until all items above are copied, otherwise
+  it will crash while loading DLC packs.
+- After copying, verify: every folder inside
+  E:\Grand Theft Auto V\update\x64\dlcpacks must contain a dlc.rpf file.
+---------------------------------------------------------------
+Generated: 2026-10-25

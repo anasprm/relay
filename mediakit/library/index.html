@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Library — MediaShelf</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23191919'/><path d='M40 30l28 20-28 20z' fill='%23fff'/></svg>">
+<style>
+  :root {
+    --paper: #f7f6f2;
+    --surface: #fff;
+    --ink: #191919;
+    --ink-2: #3d3d3f;
+    --muted: #75736c;
+    --faint: #a5a29a;
+    --line: #e3e0d8;
+    --line-2: #cdc9bf;
+    --accent: #c2471f;
+    --accent-soft: #fbeae3;
+    --ok: #2f7d4f;
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  /* Header */
+  .bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 12px 28px;
+    background: rgba(247, 246, 242, 0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-weight: 650;
+    font-size: 14.5px;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .brand-mark {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: var(--ink);
+    color: #fff;
+  }
+  .brand-mark svg { width: 15px; height: 15px; }
+  .brand span { color: var(--muted); font-weight: 500; }
+
+  .search {
+    position: relative;
+    flex: 1;
+    max-width: 460px;
+  }
+  .search input {
+    width: 100%;
+    padding: 9px 12px 9px 34px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--surface);
+    font-size: 13.5px;
+    transition: border-color .14s ease, box-shadow .14s ease;
+  }
+  .search input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .search svg {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 15px;
+    height: 15px;
+    color: var(--faint);
+    pointer-events: none;
+  }
+  .count { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+  /* Layout */
+  main { max-width: 1180px; margin: 0 auto; padding: 26px 28px 64px; }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .section-title h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -0.02em; }
+  .section-title p { margin: 0; color: var(--muted); font-size: 12px; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .head-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .open-form { display: flex; gap: 6px; }
+  .open-form input {
+    width: 178px;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    font-size: 12.5px;
+  }
+  .open-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .btn {
+    padding: 7px 12px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .14s ease, border-color .14s ease;
+  }
+  .btn:hover { background: #000; }
+  .btn.ghost { background: var(--surface); border-color: var(--line); color: var(--ink); }
+  .btn.ghost:hover { border-color: var(--line-2); background: #faf9f6; }
+  .btn[disabled] { opacity: .55; cursor: wait; }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+    gap: 18px 16px;
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+  }
+  .thumb {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #efede7;
+    overflow: hidden;
+    transition: border-color .14s ease;
+  }
+  .card:hover .thumb { border-color: var(--line-2); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb.no-thumb::after {
+    content: "▶";
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #c9c5bb;
+    font-size: 26px;
+  }
+  .duration {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(20, 20, 20, 0.78);
+    color: #fff;
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .card-title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .card-sub { color: var(--muted); font-size: 11px; }
+  .card:hover .card-title { color: #000; }
+
+  /* Empty */
+  .empty {
+    padding: 56px 24px;
+    border: 1px dashed var(--line-2);
+    border-radius: 12px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .empty strong { color: var(--ink); display: block; margin-bottom: 4px; font-size: 14px; }
+
+  /* Player */
+  .back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 14px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .back:hover { color: var(--ink); }
+
+  .stage {
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+    border: 1px solid var(--line);
+  }
+  video {
+    display: block;
+    width: 100%;
+    max-height: calc(100vh - 250px);
+    background: #000;
+  }
+
+  .player-bar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .player-bar h1 {
+    margin: 0 0 3px;
+    font-size: 17px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    line-height: 1.35;
+  }
+  .player-bar p { margin: 0; color: var(--muted); font-size: 11.5px; }
+
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 11px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink-2);
+    font-size: 12px;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .toggle input { accent-color: var(--accent); width: 14px; height: 14px; margin: 0; }
+
+  .segments {
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .segment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .segment-chip b { color: var(--ink-2); font-weight: 600; }
+
+  .sponsor-note { margin: 10px 0 0; color: var(--muted); font-size: 11.5px; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    z-index: 40;
+    transform: translateX(-50%);
+    padding: 9px 15px;
+    border-radius: 8px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 12.5px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    animation: fade .16s ease both;
+    max-width: min(92vw, 460px);
+  }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+
+  @media (max-width: 680px) {
+    .bar { padding: 10px 16px; gap: 12px; flex-wrap: wrap; }
+    .count { display: none; }
+    main { padding: 18px 16px 48px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px 12px; }
+    .player-bar { gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <a class="brand" href="/">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M9 7.5v9l7-4.5-7-4.5Z" fill="currentColor"/></svg>
+    </span>
+    MediaShelf <span>Library</span>
+  </a>
+
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>
+    </svg>
+    <input id="q" type="search" placeholder="Search your library…" autocomplete="off" aria-label="Search library">
+  </div>
+
+  <span class="count" id="count"></span>
+</header>
+
+<main>
+  <!-- Browse -->
+  <section id="browse">
+    <div class="section-head">
+      <div class="section-title">
+        <h1>Your library</h1>
+        <p id="folder"></p>
+      </div>
+      <div class="head-tools">
+        <form class="open-form" id="openForm">
+          <input id="openId" type="text" placeholder="Open by ID…" autocomplete="off" spellcheck="false" aria-label="Open a video already on disk by its video ID">
+          <button class="btn" type="submit">Open</button>
+        </form>
+        <button class="btn ghost" id="refreshBtn" type="button">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="empty" id="empty" hidden>
+      <strong>No videos here yet</strong>
+      Download something with MediaShelf, or drop MP4/WebM/MKV files into the
+      <code>downloads</code> folder, then refresh.
+    </div>
+  </section>
+
+  <!-- Player -->
+  <section id="player" hidden>
+    <button class="back" id="back" type="button">← Library</button>
+
+    <div class="stage">
+      <video id="video" controls playsinline preload="metadata"></video>
+    </div>
+
+    <div class="player-bar">
+      <div>
+        <h1 id="playerTitle"></h1>
+        <p id="playerMeta"></p>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="skipToggle" checked>
+        Skip sponsor segments
+      </label>
+    </div>
+
+    <p class="sponsor-note" id="sponsorNote"></p>
+    <ul class="segments" id="segmentList"></ul>
+  </section>
+</main>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+'use strict';
+
+const $ = (sel, root = document) => root.querySelector(sel);
+
+const state = {
+  items: [],
+  filtered: [],
+  current: null,
+  segments: [],
+  lastSkipAt: 0,
+  saveTimer: 0,
+};
+
+window.__lib = state; // small hook for manual testing
+
+let toastTimer = null;
+function toast(message) {
+  const el = $('#toast');
+  el.textContent = message;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 3200);
+}
+
+function formatDuration(seconds) {
+  if (!seconds || seconds < 1) return '0:00';
+  const total = Math.round(seconds);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return h
+    ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    : `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = bytes;
+  let index = 0;
+  while (value >= 1024 && index < units.length - 1) { value /= 1024; index += 1; }
+  return `${value.toFixed(value >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
+async function api(path) {
+  const response = await fetch(path);
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error((payload && (payload.detail || payload.error)) || `Request failed (${response.status})`);
+  }
+  return payload;
+}
+
+/* ------------------------------------------------------------------ */
+/* Browse                                                              */
+/* ------------------------------------------------------------------ */
+
+function renderGrid(items) {
+  const grid = $('#grid');
+  grid.innerHTML = '';
+  state.filtered = items;
+
+  const searching = $('#q').value.trim().length > 0;
+  $('#count').textContent = items.length
+    ? `${items.length} video${items.length === 1 ? '' : 's'}`
+    : '';
+
+  const empty = $('#empty');
+  empty.hidden = items.length > 0;
+  if (!items.length) {
+    empty.innerHTML = searching
+      ? '<strong>No matches</strong>Try a different word.'
+      : '<strong>No videos here yet</strong>Download something with MediaShelf, or drop MP4/WebM/MKV files into the <code>downloads</code> folder, then refresh.';
+  }
+
+  for (const item of items) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'card';
+    card.title = item.title;
+
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+
+    const img = document.createElement('img');
+    img.loading = 'lazy';
+    img.alt = '';
+    img.src = item.thumbUrl;
+    img.addEventListener('error', () => { thumb.classList.add('no-thumb'); img.remove(); });
+    thumb.appendChild(img);
+
+    if (item.duration) {
+      const duration = document.createElement('span');
+      duration.className = 'duration';
+      duration.textContent = formatDuration(item.duration);
+      thumb.appendChild(duration);
+    }
+
+    const title = document.createElement('span');
+    title.className = 'card-title';
+    title.textContent = item.title;
+
+    const sub = document.createElement('span');
+    sub.className = 'card-sub';
+    sub.textContent = `${item.filename.split('.').pop().toUpperCase()} · ${formatBytes(item.size)}`;
+
+    card.append(thumb, title, sub);
+    card.addEventListener('click', () => openPlayer(item));
+    grid.appendChild(card);
+  }
+}
+
+let searchTimer = null;
+$('#q').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => runSearch($('#q').value.trim()), 180);
+});
+
+async function runSearch(query) {
+  if (!query) {
+    renderGrid(state.items);
+    return;
+  }
+  try {
+    const data = await api(`/api/search?q=${encodeURIComponent(query)}`);
+    renderGrid(data.items);
+  } catch {
+    /* keep the current grid on a transient error */
+  }
+}
+
+async function loadLibrary(options = {}) {
+  const refreshBtn = $('#refreshBtn');
+  if (options.manual) {
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = 'Refreshing…';
+  }
+
+  try {
+    // /api/library scans the folder on every request, so a refresh always
+    // picks up files downloaded or copied in since the last look.
+    const data = await api('/api/library');
+    state.items = data.items;
+
+    $('#folder').textContent = data.folder;
+    $('#folder').title = data.folder;
+    await runSearch($('#q').value.trim());
+
+    if (options.manual) {
+      toast(`Refreshed · ${data.count} video${data.count === 1 ? '' : 's'} in the library`);
+    }
+
+    if (!options.manual && location.hash) {
+      const wanted = decodeURIComponent(location.hash.slice(1));
+      const item = data.items.find((entry) => entry.id === wanted);
+      if (item) openPlayer(item);
+    }
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    if (options.manual) {
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = '↻ Refresh';
+    }
+  }
+}
+
+$('#refreshBtn').addEventListener('click', () => loadLibrary({ manual: true }));
+
+$('#openForm').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const raw = $('#openId').value.trim().replace(/^\[+|\]+$/g, '');
+  if (!raw) return;
+
+  const item = state.items.find((entry) => entry.id === raw);
+  if (!item) {
+    toast(`No local file with ID “${raw}”. Download it, then press Refresh.`);
+    return;
+  }
+
+  $('#openId').value = '';
+  openPlayer(item);
+});
+
+// Coming back to the tab after downloading something should be enough.
+let lastAutoRefresh = 0;
+function autoRefresh() {
+  if (document.hidden || !$('#player').hidden) return;
+  const now = Date.now();
+  if (now - lastAutoRefresh < 2500) return;
+  lastAutoRefresh = now;
+  loadLibrary();
+}
+window.addEventListener('focus', autoRefresh);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) autoRefresh();
+});
+
+/* ------------------------------------------------------------------ */
+/* Player                                                              */
+/* ------------------------------------------------------------------ */
+
+const video = $('#video');
+
+function openPlayer(item) {
+  state.current = item;
+  state.segments = [];
+  state.lastSkipAt = 0;
+
+  $('#browse').hidden = true;
+  $('#player').hidden = false;
+  $('#playerTitle').textContent = item.title;
+  $('#playerMeta').textContent = `${item.filename} · ${formatBytes(item.size)}${item.duration ? ` · ${formatDuration(item.duration)}` : ''}`;
+  $('#sponsorNote').textContent = 'Checking SponsorBlock…';
+  $('#segmentList').innerHTML = '';
+  history.replaceState(null, '', `#${encodeURIComponent(item.id)}`);
+
+  video.src = item.streamUrl;
+  video.load();
+
+  loadSponsorSegments(item);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function loadSponsorSegments(item) {
+  try {
+    const data = await api(item.sponsorUrl);
+    if (state.current !== item) return;
+
+    state.segments = (data.segments || [])
+      .filter((segment) => segment.end - segment.start >= 1.5)
+      .sort((a, b) => a.start - b.start);
+
+    renderSegments();
+  } catch {
+    $('#sponsorNote').textContent = 'SponsorBlock could not be reached.';
+  }
+}
+
+function renderSegments() {
+  const list = $('#segmentList');
+  const note = $('#sponsorNote');
+  list.innerHTML = '';
+
+  if (!state.segments.length) {
+    note.textContent = 'No sponsor segments reported for this video.';
+    return;
+  }
+
+  note.textContent = `${state.segments.length} segment${state.segments.length === 1 ? '' : 's'} will be skipped automatically.`;
+
+  state.segments.forEach((segment) => {
+    const chip = document.createElement('li');
+    chip.className = 'segment-chip';
+    const category = document.createElement('b');
+    category.textContent = segment.category;
+    chip.append(category, document.createTextNode(`${formatDuration(segment.start)} – ${formatDuration(segment.end)}`));
+    chip.addEventListener('click', () => { video.currentTime = segment.start; });
+    chip.style.cursor = 'pointer';
+    list.appendChild(chip);
+  });
+}
+
+function closePlayer() {
+  savePosition(true);
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  state.current = null;
+  state.segments = [];
+  $('#player').hidden = true;
+  $('#browse').hidden = false;
+  history.replaceState(null, '', location.pathname);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+$('#back').addEventListener('click', closePlayer);
+
+/* Resume position ---------------------------------------------------- */
+
+function positionKey(item) {
+  return `library.pos.${item.id}`;
+}
+
+function savePosition(force = false) {
+  const item = state.current;
+  if (!item || !video.duration) return;
+  const now = Date.now();
+  if (!force && now - state.saveTimer < 2500) return;
+  state.saveTimer = now;
+  try {
+    localStorage.setItem(positionKey(item), String(video.currentTime));
+  } catch { /* storage may be full or disabled */ }
+}
+
+video.addEventListener('loadedmetadata', () => {
+  const item = state.current;
+  if (!item) return;
+
+  let saved = 0;
+  try { saved = Number(localStorage.getItem(positionKey(item))) || 0; } catch { saved = 0; }
+
+  if (saved > 3 && saved < video.duration - 3) {
+    video.currentTime = saved;
+    toast(`Resumed at ${formatDuration(saved)}`);
+  }
+});
+
+video.addEventListener('timeupdate', () => {
+  savePosition();
+
+  if (!$('#skipToggle').checked || !state.segments.length) return;
+  if (video.seeking) return;
+
+  const time = video.currentTime;
+  const now = Date.now();
+  if (now - state.lastSkipAt < 900) return;
+
+  for (const segment of state.segments) {
+    if (time >= segment.start - 0.15 && time < segment.end - 0.3) {
+      state.lastSkipAt = now;
+      video.currentTime = segment.end + 0.05;
+      toast(`Skipped ${segment.category} · ${formatDuration(segment.end - segment.start)}`);
+      break;
+    }
+  }
+});
+
+video.addEventListener('pause', () => savePosition(true));
+window.addEventListener('beforeunload', () => savePosition(true));
+
+/* Keyboard shortcuts -------------------------------------------------- */
+
+document.addEventListener('keydown', (event) => {
+  const tag = (event.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea') return;
+
+  if (event.key === '/' && $('#player').hidden) {
+    event.preventDefault();
+    $('#q').focus();
+    return;
+  }
+
+  if ($('#player').hidden) return;
+
+  switch (event.key.toLowerCase()) {
+    case ' ':
+    case 'k':
+      event.preventDefault();
+      if (video.paused) video.play(); else video.pause();
+      break;
+    case 'arrowright':
+      event.preventDefault();
+      video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
+      break;
+    case 'arrowleft':
+      event.preventDefault();
+      video.currentTime = Math.max(0, video.currentTime - 5);
+      break;
+    case 'm':
+      video.muted = !video.muted;
+      break;
+    case 'f':
+      if (document.fullscreenElement) document.exitFullscreen();
+      else video.requestFullscreen?.();
+      break;
+    case 'escape':
+      closePlayer();
+      break;
+  }
+});
+
+/* Boot ---------------------------------------------------------------- */
+
+loadLibrary();
+</script>
+</body>
+</html>

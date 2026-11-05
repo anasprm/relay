@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valiyakath Chat - Universal Launcher & Setup Guide</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 24px 16px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .main-action {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            padding: 28px;
+            border-radius: var(--radius);
+            text-align: center;
+            margin-bottom: 32px;
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.3);
+        }
+
+        .main-action h2 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .main-action p {
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+
+        .btn-primary {
+            display: inline-block;
+            background-color: #ffffff;
+            color: #1e40af;
+            font-weight: 700;
+            padding: 14px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+            background-color: #f8fafc;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .card-icon {
+            font-size: 28px;
+            margin-bottom: 12px;
+        }
+
+        .card h3 {
+            font-size: 1.15rem;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .card p, .card ol {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .card ol {
+            padding-left: 18px;
+            margin-top: 8px;
+        }
+
+        .card ol li {
+            margin-bottom: 6px;
+        }
+
+        .code-box {
+            background-color: #1e293b;
+            color: #f1f5f9;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>💬 Valiyakath Chat Launcher</h1>
+        <p>Access your chat instantly with saved login sessions across Windows, iOS, and Android</p>
+    </header>
+
+    <div class="main-action">
+        <h2>Open Chat in Browser</h2>
+        <p>Once signed in, returning here will open directly to your logged-in session.</p>
+        <a href="https://valiyakath.vercel.app/" target="_blank" class="btn-primary">🚀 Launch Valiyakath Chat</a>
+    </div>
+
+    <div class="grid">
+        <!-- Windows Section -->
+        <div class="card">
+            <div class="card-icon">💻</div>
+            <h3>Windows Shortcut</h3>
+            <p>Create a desktop shortcut on Windows:</p>
+            <ol>
+                <li>Create a file named <code>Valiyakath.url</code>.</li>
+                <li>Paste the content below into it:</li>
+            </ol>
+            <div class="code-box">[InternetShortcut]
+URL=https://valiyakath.vercel.app/</div>
+            <p style="margin-top: 10px;">Double-click the <code>.url</code> file anytime to open your chat.</p>
+        </div>
+
+        <!-- iOS Section -->
+        <div class="card">
+            <div class="card-icon">📱</div>
+            <h3>iOS (iPhone / iPad)</h3>
+            <p>Add to your Home Screen for instant app-like access:</p>
+            <ol>
+                <li>Open <b>Safari</b> and go to <code>valiyakath.vercel.app</code>.</li>
+                <li>Log in to your account once.</li>
+                <li>Tap the <b>Share</b> icon (bottom bar).</li>
+                <li>Tap <b>Add to Home Screen</b>.</li>
+                <li>Name it <b>Valiyakath Chat</b> and tap <b>Add</b>.</li>
+            </ol>
+        </div>
+
+        <!-- Android Section -->
+        <div class="card">
+            <div class="card-icon">🤖</div>
+            <h3>Android Shortcut</h3>
+            <p>Add to your Android Home Screen:</p>
+            <ol>
+                <li>Open <b>Chrome</b> and visit <code>valiyakath.vercel.app</code>.</li>
+                <li>Log in to your account.</li>
+                <li>Tap the three dots menu (<b>⋮</b>) top right.</li>
+                <li>Tap <b>Add to Home screen</b>.</li>
+                <li>Tap <b>Add</b> to confirm.</li>
+            </ol>
+        </div>
+    </div>
+
+    <footer>
+        <p><b>Note:</b> Your session is maintained by your device's browser local storage & cookies. Logging in once keeps you signed in whenever you re-open the shortcut.</p>
+    </footer>
+</div>
+
+</body>
+</html>

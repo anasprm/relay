@@ -1,0 +1,6 @@
+bin/
+downloads/
+data/
+node_modules/
+cookies.txt
+*.log

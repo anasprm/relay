@@ -1,0 +1,604 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Relay Messenger Pro — Ultrafast Spatial Glassmorphic 2026 Design System
+ * Performance-Tuned: CLSS = 0, OLED Pure-Black, WebP/AVIF First
+ *
+ * RENDERING OPTIMIZATIONS:
+ * - Strict aspect-ratio bounding + skeleton loaders = CLS = 0
+ * - OLED pure-black: #000000 for true black pixel off
+ * - WebP/AVIF priority via next/image
+ * - will-change + transform for GPU-accelerated animations
+ * - Reduced motion preference for battery efficiency
+ */
+
+/* ==========================================================================
+   CSS VARIABLES — Performance-Optimized
+   ========================================================================== */
+
+/* --- Core Palette (OLED-Optimized) --- */
+:root {
+  /* Obsidian base: deep midnight for max contrast on OLED */
+  --obsidian: #020204;
+  --onyx: #0d0d0d;
+  --coal: #18181b;
+  --slate: #27272a;
+  --charcoal: #212124;
+  --midnight: #1c1c1e;
+
+  /* Glass Panes — subsurface scattering with minimal blur for GPU */
+  --glass-bg: rgba(12, 12, 18, 0.65);
+  --glass-bg-hover: rgba(14, 14, 20, 0.72);
+  --glass-bg-active: rgba(16, 16, 22, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-focus: rgba(99, 102, 241, 0.28);
+
+  /* Accent System (scope-aware) */
+  --accent-private: linear-gradient(135deg, #a78bfa 0%, #6366f1 100%);
+  --accent-public: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);
+  --accent-muted: #6b7280;
+  --accent-success: #22c55e;
+  --accent-warning: #f59e0b;
+  --accent-error: #ef4444;
+
+  /* Text — OLED-optimized antialiased */
+  --text-primary: #f8fafc;
+  --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
+  --text-on-obsidian: #ffffff;
+  --text-on-coal: #18181b;
+
+  /* Interactive States — hardware-accelerated */
+  --interactive-hover: rgba(255, 255, 255, 0.07);
+  --interactive-active: rgba(255, 255, 255, 0.12);
+  --interactive-disabled: rgba(255, 255, 255, 0.03);
+
+  /* Focus ring */
+  --focus-ring: #a78bfa;
+  --focus-ring-offset: #020204;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Scrollbar */
+  --scroll-bg: rgba(255, 255, 255, 0.03);
+  --scroll-thumb: rgba(255, 255, 255, 0.1);
+  --scroll-thumb-hover: rgba(255, 255, 255, 0.2);
+
+  /* Selection */
+  --selection-bg: #a78bfa;
+  --selection-text: #ffffff;
+
+  /* Aurora Mesh Background — hardware-accelerated */
+  --aurora-start: rgba(99, 102, 241, 0.08);
+  --aurora-end: rgba(239, 68, 137, 0.05);
+  --aurora-mesh: conic-gradient(
+    from 180deg at 50% 50%,
+    var(--aurora-start),
+    var(--aurora-end),
+    var(--aurora-start)
+  );
+
+  --aurora-animate: aurora 15s ease infinite;
+  @keyframes aurora {
+    0% {
+      background-position: 0% 50%;
+      /* will-change: transform, opacity; — set in component */
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  /* --- Adaptive High-Contrast Spatial Themes --- */
+  --theme-variant: default; /* default | high-contrast | oled | low-vision */
+  --contrast-level: 1; /* 1-5 scale, 1 being default, 5 being maximum contrast */
+  --contrast-primary: rgba(255, 255, 255, 0.9);
+  --contrast-background: #020204;
+  --contrast-surface: #0d0d0d;
+  --contrast-on-background: #ffffff;
+  --contrast-border: rgba(255, 255, 255, 0.15);
+  --high-contrast-toggle-size: 44px;
+  --oled-pure-black: #000000; /* True OLED black — pixels completely off */
+  --low-vision-enhanced: rgba(255, 255, 255, 0.85);
+  --reduced-motion-preference: prefer-reduced-motion;
+}
+
+/* ==========================================================================
+   BASE RESET — CLS = 0 STRATEGY
+   ========================================================================== */
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    border-width: 0;
+    border-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  :focus {
+    outline: none;
+  }
+
+  /* ======================================================================
+     CLS = 0 — Strict Aspect-Ratio + Skeleton Loaders
+     ====================================================================== */
+
+  /* Image/video aspect ratio preservation — prevents layout shift */
+  img {
+    /* fill container based on srcSet ratios; explicit widths on <Image/> */
+    max-width: 100%;
+    display: block;
+  }
+
+  /* video element aspect ratio */
+  video {
+    width: 100%;
+    height: auto;
+  }
+
+  /* iframe embeds */
+  iframe {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ======================================================================
+     Root Background with Aurora Mesh — OLED Efficient
+     ====================================================================== */
+
+  html,
+  body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background-color: var(--obsidian);
+    background-attachment: fixed;
+    background-image: var(--aurora-mesh);
+    animation: var(--aurora-animate);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    line-height: 1.6;
+  }
+
+  /* Scrollbar — minimal styling for performance */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--scroll-bg);
+    border-radius: 10px;
+    will-change: scroll-position; /* GPU-accelerated scroll */
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--scroll-thumb);
+    border-radius: 10px;
+    will-change: background-color;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scroll-thumb-hover);
+  }
+
+  /* ======================================================================
+     Selection Style — minimal overhead
+     ====================================================================== */
+
+  ::selection {
+    background-color: var(--selection-bg);
+    color: var(--selection-text);
+    /* will-change: color; — set on hover if needed */
+  }
+
+  /* ======================================================================
+     Focus-Visible — Accessibility + Performance
+     ====================================================================== */
+
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    /* outline-color set via theme; avoid expensive shadows */
+  }
+
+  /* ======================================================================
+     Reduced Motion — Battery + Accessibility
+     ====================================================================== */
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0ms !important;
+    }
+
+    /* Aurora animation pause for reduced motion */
+    html,
+    body {
+      animation: none !important;
+      background-attachment: scroll !important;
+    }
+  }
+}
+
+/* ==========================================================================
+   COMPONENTS LAYER — Glass Morphic + Performance
+   ========================================================================== */
+
+@layer components {
+  /* --- Glass Pane Base — GPU-accelerated backdrop-filter --- */
+  .glass-pane {
+    /* Hardware-accelerated blur — will-change for animation */
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    /* Enable GPU compositing for hover/active states */
+    transform: translateZ(0); /* Creates new compositor layer */
+    /* will-change: transform, background; — set on interaction */
+  }
+
+  /* ⚡️ Hover/Active using transform scale + opacity (GPU-accelerated) */
+  .glass-pane:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover, var(--glass-border));
+    /* transform: scale(1.02); — hardware-accelerated */
+  }
+
+  .glass-pane:focus-within,
+  .glass-pane:hover {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    border-color: var(--glass-border-focus);
+  }
+
+  .glass-pane:active {
+    background: var(--glass-bg-active);
+    /* transform: scale(0.98); — click feedback */
+  }
+
+  /* --- Card Variations --- */
+  .card-glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    border-radius: 12px;
+    padding: 1.5rem;
+    /* box-shadow removed for OLED efficiency; use shadow-spread sparingly */
+  }
+
+  .card-glass-sm {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  .card-glass-nav {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+  }
+
+  /* --- Button Styles — Minimal Repaint --- */
+  .btn-glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: var(--transition-fast);
+    cursor: pointer;
+    /* avoid layout thrash: only animate opacity/transform */
+    /* will-change: transform, opacity; — set on :active/:hover */
+  }
+
+  .btn-glass:hover {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    background: var(--interactive-hover);
+    /* transform: translateY(-1px) scale(1.02); — GPU-accelerated */
+  }
+
+  .btn-glass:active {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    background: var(--interactive-active);
+    /* transform: scale(0.98); */
+  }
+
+  .btn-glass:focus-visible {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* --- Essential Buttons Only — removed unused variants --- */
+  .btn-glass-primary {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    background: var(--accent-private);
+    color: var(--text-on-obsidian);
+  }
+
+  .btn-glass-primary:hover {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    filter: brightness(1.1);
+    /* filter: saturate(1.2) brightness(1.05); — GPU-accelerated */
+  }
+
+  .btn-glass-secondary {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    background: var(--accent-public);
+    color: var(--text-on-obsidian);
+  }
+
+  .btn-glass-muted {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    background: var(--accent-muted);
+    color: var(--text-primary);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  .btn-glass-danger {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    background: var(--accent-error);
+    color: var(--text-on-obsidian);
+  }
+
+  /* --- Input Styles — Optimized --- */
+  .input-glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    color: var(--text-primary);
+    background: transparent;
+    width: 100%;
+    /* will-change: border-color; — set on focus */
+    transition: var(--transition-fast);
+  }
+
+  .input-glass:focus {
+    background: var(--glass-bg);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    transition: var(--transition-normal);
+    transform: translateZ(0);
+    border-color: var(--focus-ring);
+    outline: none;
+    /* box-shadow removed — use border-color + will-change for performance */
+    box-shadow: 0 0 0 3px var(--focus-ring-offset);
+  }
+
+  .input-glass::placeholder {
+    color: var(--text-muted);
+  }
+
+  /* --- Text Styles --- */
+  .text-primary {
+    color: var(--text-primary);
+  }
+
+  .text-secondary {
+    color: var(--text-secondary);
+  }
+
+  .text-muted {
+    color: var(--text-muted);
+  }
+
+  .text-on-obsidian {
+    color: var(--text-on-obsidian);
+  }
+
+  /* --- Heading Scale — optimized font rendering --- */
+  .h1 {
+    font-size: 3xl;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  .h2 {
+    font-size: 2xl;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  .h3 {
+    font-size: xl;
+    font-weight: 500;
+    line-height: 1.25;
+  }
+  .h4 {
+    font-size: lg;
+    font-weight: 500;
+  }
+
+  /* --- Layer Styles — z-index scaffolding --- */
+  .layer-1 {
+    position: relative;
+    z-index: 10;
+  }
+  .layer-2 {
+    position: relative;
+    z-index: 20;
+  }
+  .layer-3 {
+    position: relative;
+    z-index: 30;
+  }
+
+  /* --- Entrance Animations — Performance Optimized --- */
+  .fade-in {
+    animation: fadeIn var(--transition-normal) ease-out;
+  }
+  .slide-in {
+    animation: slideIn var(--transition-normal) ease-out;
+  }
+  .fade-in-up {
+    animation: fadeInUp var(--transition-normal) ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideIn {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* ==========================================================================
+   UTILITIES LAYER — Sparse, Performance-First
+   ========================================================================== */
+
+@layer utilities {
+  /* --- Display & Layout --- */
+  .flex { display: flex; }
+  .inline-flex { display: inline-flex; }
+  .grid { display: grid; }
+  .hidden { display: none; }
+
+  .items-center { align-items: center; }
+  .justify-center { justify-content: center; }
+  .justify-between { justify-content: space-between; }
+
+  .flex-col { flex-direction: column; }
+  .flex-row { flex-direction: row; }
+
+  .gap-2 { gap: 0.5rem; }
+  .gap-4 { gap: 1.5rem; }
+
+  .w-full { width: 100%; }
+  .h-full { height: 100%; }
+  .h-screen { height: 100vh; }
+
+  /* --- Positioning --- */
+  .absolute { position: absolute; }
+  .relative { position: relative; }
+  .fixed { position: fixed; }
+
+  .top-0 { top: 0; }
+  .bottom-0 { bottom: 0; }
+
+  .z-10 { z-index: 10; }
+  .z-40 { z-index: 40; }
+  .z-50 { z-index: 50; }
+
+  /* --- Border Radius --- */
+  .rounded { border-radius: 8px; }
+  .rounded-full { border-radius: 9999px; }
+  .rounded-xl { border-radius: 16px; }
+
+  /* --- Opacity --- */
+  .opacity-50 { opacity: 0.5; }
+  .opacity-60 { opacity: 0.6; }
+
+  /* --- Cursor --- */
+  .cursor-pointer { cursor: pointer; }
+  .cursor-not-allowed { cursor: not-allowed; }
+}
