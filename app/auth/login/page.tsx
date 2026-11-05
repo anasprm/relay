@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Logo } from "@/components/ui/Logo";
-import { Lock, Mail, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
+import { User, Lock, Mail, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -16,13 +16,13 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
-      showToast("Please enter your email", "error");
+    if (!identifier) {
+      showToast("Please enter your username or email", "error");
       return;
     }
     setLoading(true);
     try {
-      await login(email, password);
+      await login(identifier, password);
       showToast("Welcome back to Relay Messenger Pro", "success");
       router.push("/chat");
     } catch (err: any) {
@@ -51,16 +51,17 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">Workspace Email</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Username or Email</label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                autoComplete="username"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pl-10 text-white focus:outline-none focus:border-accent placeholder-slate-400 transition-all"
-                placeholder="name@company.com"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pl-11 text-white focus:outline-none focus:border-accent placeholder-slate-400 transition-all"
+                placeholder="alex@relay.pro or alexmercer"
               />
             </div>
           </div>
@@ -71,10 +72,11 @@ export default function LoginPage() {
               <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
               <input
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pl-10 text-white focus:outline-none focus:border-accent placeholder-slate-400 transition-all"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pl-11 text-white focus:outline-none focus:border-accent placeholder-slate-400 transition-all"
                 placeholder="••••••••"
               />
             </div>

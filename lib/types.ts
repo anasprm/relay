@@ -6,6 +6,7 @@ export interface User {
   id: string;
   username: string;
   displayName: string;
+  email?: string | null;
   accent: Accent;
   avatarUrl?: string | null;
   discoverable?: boolean;

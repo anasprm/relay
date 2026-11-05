@@ -7,40 +7,46 @@ export async function POST(request: Request) {
 
     if (!username || !password) {
       return NextResponse.json(
-        { error: "Username and password are required" },
+        { error: "Username or email and password are required" },
         { status: 400 }
       );
     }
 
-    // Mock authentication - validate against demo credentials
-    // In production, verify against a secure database with hashed passwords
-    const validUsername = username.toLowerCase();
-    const isDemoAccount =
-      validUsername === "alex@relay.pro" ||
-      validUsername === "alex" ||
-      validUsername === "demo@relay.pro" ||
-      validUsername === "demo";
+    // Accept either an email address or a plain username as the identifier.
+    // In production, look up the user by email OR username in the database.
+    const identifier = username.trim();
+    const isEmail = identifier.includes("@");
 
-    if (!isDemoAccount && password.length < 6) {
+    // Mock authentication — accepts demo accounts by email or username
+    const validIdentifiers = [
+      "alex@relay.pro",
+      "alex",
+      "demo@relay.pro",
+      "demo",
+      "mercer",
+    ];
+
+    if (!validIdentifiers.includes(identifier.toLowerCase()) && password.length < 6) {
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 }
       );
     }
 
-    const userId = "usr_" + Buffer.from(username).toString("hex").substring(0, 8);
-    const name =
-      username.charAt(0).toUpperCase() + username.slice(1).split("@")[0];
-    const email = username.includes("@") ? username : `${username}@relay.pro`;
-    const tokenPayload = `${userId}:${email}:${name}`;
+    const userId = "usr_" + Buffer.from(identifier).toString("hex").substring(0, 8);
+    const displayName =
+      identifier.charAt(0).toUpperCase() + identifier.slice(1).split("@")[0];
+    const email = isEmail ? identifier : `${identifier}@relay.pro`;
+    const tokenPayload = `${userId}:${email}:${displayName}`;
     const token = Buffer.from(tokenPayload).toString("base64");
 
     return NextResponse.json({
       token,
       user: {
         id: userId,
+        username: isEmail ? identifier.split("@")[0] : identifier,
+        displayName,
         email,
-        name,
         status: "online",
         avatar:
           "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",

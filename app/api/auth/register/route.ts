@@ -7,7 +7,7 @@ export async function POST(request: Request) {
 
     if (!username || !password) {
       return NextResponse.json(
-        { error: "Username and password are required" },
+        { error: "Username or email and password are required" },
         { status: 400 }
       );
     }
@@ -27,18 +27,26 @@ export async function POST(request: Request) {
       );
     }
 
-    const userId = "usr_" + Buffer.from(username).toString("hex").substring(0, 8);
-    const displayName = name || username.charAt(0).toUpperCase() + username.slice(1).split("@")[0];
-    const email = username.includes("@") ? username : `${username}@relay.pro`;
-    const tokenPayload = `${userId}:${email}:${displayName}`;
+    const identifier = username.trim();
+    const isEmail = identifier.includes("@");
+
+    // Email is optional — if the user registers with a plain username,
+    // email is stored as null and can be added later.
+    const email = isEmail ? identifier : null;
+
+    const userId = "usr_" + Buffer.from(identifier).toString("hex").substring(0, 8);
+    const displayName =
+      name || identifier.charAt(0).toUpperCase() + identifier.slice(1).split("@")[0];
+    const tokenPayload = `${userId}:${email || identifier}:${displayName}`;
     const token = Buffer.from(tokenPayload).toString("base64");
 
     return NextResponse.json({
       token,
       user: {
         id: userId,
+        username: isEmail ? identifier.split("@")[0] : identifier,
+        displayName,
         email,
-        name: displayName,
         status: "online",
         avatar:
           "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",

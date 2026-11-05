@@ -7,9 +7,9 @@ import { Logo } from "@/components/ui/Logo";
 import { Lock, Mail, User, ArrowRight, ShieldCheck } from "lucide-react";
 
 export default function RegisterPage() {
-  const [name, setName] = useState("Alex Mercer");
-  const [email, setEmail] = useState("alex@relay.pro");
-  const [password, setPassword] = useState("••••••••");
+  const [identifier, setIdentifier] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const { showToast } = useToast();
@@ -17,13 +17,13 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !name) {
+    if (!identifier || !name) {
       showToast("Please fill in all fields", "error");
       return;
     }
     setLoading(true);
     try {
-      await register(email, password, name);
+      await register(identifier, password, name);
       showToast("Workspace created successfully", "success");
       router.push("/chat");
     } catch (err: any) {
@@ -57,26 +57,28 @@ export default function RegisterPage() {
               <User className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
               <input
                 type="text"
+                autoComplete="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2.5 pl-10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2.5 pl-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                 placeholder="Alex Mercer"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">Workspace Email</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1.5">Username or Email</label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                autoComplete="username"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required
-                className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2.5 pl-10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                placeholder="name@company.com"
+                className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2.5 pl-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                placeholder="alex@relay.pro or alexmercer"
               />
             </div>
           </div>
@@ -87,10 +89,11 @@ export default function RegisterPage() {
               <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-500" />
               <input
                 type="password"
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2.5 pl-10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2.5 pl-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                 placeholder="••••••••"
               />
             </div>
@@ -99,7 +102,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            className="w-full mt-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-3 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -114,7 +117,7 @@ export default function RegisterPage() {
 
         <div className="mt-6 text-center text-xs text-slate-400">
           Already have a workspace?{" "}
-          <a href="/auth/login" className="text-cyan-400 hover:underline font-medium">
+          <a href="/auth/login" className="text-cyan-400 hover:underline font-medium focus:outline-none">
             Sign in
           </a>
         </div>
