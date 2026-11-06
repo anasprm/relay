@@ -321,7 +321,43 @@ function renderAiInline(text: string, keyPrefix: string) {
   });
 }
 
-/** Renders fenced code blocks, inline code and **bold** from AI replies. */
+function renderAiTextBlock(text: string, keyPrefix: string) {
+  const lines = text.split("\n");
+  return lines.map((line, i) => {
+    const key = `${keyPrefix}-${i}`;
+
+    const heading = line.match(/^\s{0,3}#{1,6}\s+(.*)$/);
+    if (heading) {
+      return (
+        <div
+          key={key}
+          className="mt-2 mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#25D366]"
+        >
+          {heading[1].replace(/\*\*/g, "")}
+        </div>
+      );
+    }
+
+    const bullet = line.match(/^\s*[-*]\s+(.*)$/);
+    if (bullet) {
+      return (
+        <div key={key} className="flex gap-1.5">
+          <span className="text-[#25D366]">•</span>
+          <span className="flex-1">{renderAiInline(bullet[1], key)}</span>
+        </div>
+      );
+    }
+
+    return (
+      <React.Fragment key={key}>
+        {renderAiInline(line, key)}
+        {i < lines.length - 1 ? "\n" : null}
+      </React.Fragment>
+    );
+  });
+}
+
+/** Renders fenced code blocks, headings, bullets, inline code and **bold**. */
 function RichAiText({ text }: { text: string }) {
   const blocks = text.split(/```/);
   return (
@@ -333,13 +369,15 @@ function RichAiText({ text }: { text: string }) {
           return (
             <pre
               key={i}
-              className="my-1 overflow-x-auto rounded-lg border border-white/10 bg-black/60 p-2 text-[11px] leading-relaxed text-[#E5E5E7] whitespace-pre"
+              className="my-1 overflow-x-auto rounded-lg border border-white/10 bg-black/60 p-2 text-[11px] leading-relaxed text-[#E5E5E7] whitespace-pre-wrap break-words"
             >
               <code>{code.replace(/\n$/, "")}</code>
             </pre>
           );
         }
-        return <span key={i}>{renderAiInline(block, `b${i}`)}</span>;
+        return (
+          <React.Fragment key={i}>{renderAiTextBlock(block, `b${i}`)}</React.Fragment>
+        );
       })}
     </>
   );
@@ -363,6 +401,13 @@ function CopilotBriefPanel({
   const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([
     { role: "assistant", text: "Hello! I'm your Relay AI assistant. How can I help you today?" },
   ]);
+  const aiScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Keep the newest message in view as the conversation grows.
+  useEffect(() => {
+    const el = aiScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [aiMessages, loading]);
 
   const handleSummarize = useCallback(() => {
     if (!onSummarize) return;
@@ -420,7 +465,7 @@ function CopilotBriefPanel({
           <X className="h-4 w-4" />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-3">
+      <div ref={aiScrollRef} className="flex-1 overflow-y-auto p-2 space-y-3">
         {aiMessages.map((msg, i) => (
           <div
             key={i}
