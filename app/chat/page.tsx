@@ -1338,7 +1338,7 @@ export default function ChatPage() {
   /* Desktop layout                                                 */
   /* -------------------------------------------------------------- */
   const desktopSidebar = (
-    <aside className="relative hidden md:flex h-[100dvh] flex-col bg-[#0F0F11] border-r border-[#2A2A2C] lg:w-80 xl:w-[340px]">
+    <aside className="relative hidden md:flex h-[100dvh] flex-col shrink-0 w-[340px] bg-[#0F0F11] border-r border-[#2A2A2C]">
       <div className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-4">
         <div className="flex items-center gap-2">
           <Logo className="h-8 w-8 text-[#25D366]" compact />
