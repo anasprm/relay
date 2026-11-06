@@ -27,6 +27,7 @@ import {
   Paperclip,
   Phone,
   Play,
+  Plus,
   Search,
   Send,
   Settings,
@@ -583,14 +584,14 @@ export function Composer({
         </div>
       )}
 
-      <div className="p-3 bg-[#0A0A0C] border-t border-[#1C1C1E] flex items-center gap-2 select-none">
+      <div className="flex items-center gap-2 px-4 py-3 bg-[#0A0A0C] border-t border-[#1C1C1E] select-none">
         {/* Left: Attachment Button */}
-        <label
+        <button
           type="button"
-          className="p-2.5 text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-zinc-800/60 shrink-0 cursor-pointer"
-          aria-label="Attach media"
+          className="p-2.5 text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-zinc-800/60 shrink-0"
+          title="Attach media"
         >
-          <Paperclip className="w-5 h-5" />
+          <Plus className="w-5 h-5" />
           <input
             type="file"
             ref={fileInputRef}
@@ -598,7 +599,7 @@ export function Composer({
             className="hidden"
             accept="image/*,application/pdf,video/*"
           />
-        </label>
+        </button>
 
         {/* Central Input Container Pill */}
         <div className="flex-1 flex items-center bg-[#1C1C1E] rounded-full px-4 py-2 border border-zinc-800/80 focus-within:border-[#25D366] transition-all shadow-inner">
@@ -636,8 +637,10 @@ export function Composer({
           type="submit"
           disabled={isEmpty || disabled}
           className={cn(
-            "p-3 bg-[#25D366] text-black font-medium rounded-full hover:bg-[#20ba5a] transition-all shadow-md shrink-0 flex items-center justify-center",
-            isEmpty || disabled ? "opacity-40 cursor-not-allowed" : ""
+            "p-2.5 rounded-full text-white font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 flex items-center justify-center",
+            isEmpty || disabled
+              ? "bg-[#1C1C1E] text-[#8E8E93]"
+              : "bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600",
           )}
           aria-label={isEmpty ? "Record voice message" : "Send message"}
         >
@@ -1709,3 +1712,6 @@ export default function ChatPage() {
     </div>
   );
 }
+
+
+
