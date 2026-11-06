@@ -22,8 +22,12 @@ export const metadata: Metadata = {
     title: 'Relay',
   },
   icons: {
-    icon: '/favicon.ico',
-    apple: '/pwa/icon-192x192.png',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/pwa/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/pwa/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/pwa/icon-180x180.png',
   },
 };
 
@@ -89,8 +93,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="apple-touch-icon" href="/pwa/icon-192x192.png" />
+        <link rel="apple-touch-icon" href="/pwa/icon-180x180.png" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/pwa/icon-192x192.png" />
+        <meta name="theme-color" content="#25D366" />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: bootstrapPayload }} />
       </head>
