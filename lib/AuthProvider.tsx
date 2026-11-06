@@ -15,12 +15,22 @@ import type { AuthResponse, User } from './types';
 /** Renew a session once it is inside its last 10 days (of a 30-day lifetime). */
 const SESSION_REFRESH_WINDOW_MS = 20 * 24 * 60 * 60 * 1000;
 
+interface RegisterOptions {
+  email?: string;
+  inviteCode?: string;
+  displayName?: string;
+}
+
 interface AuthContextValue {
   user: User | null;
   token: string | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<User>;
-  register: (username: string, password: string, inviteCode?: string) => Promise<User>;
+  register: (
+    username: string,
+    password: string,
+    options?: RegisterOptions,
+  ) => Promise<User>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -28,6 +38,24 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const NOTICE_KEY = 'relay.authNotice';
+const SESSION_COOKIE = 'relay.session';
+const SESSION_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
+
+/**
+ * Middleware runs on the server before the client can read localStorage, so a
+ * small marker cookie lets it distinguish "signed in" from "signed out". The
+ * real bearer token never leaves localStorage.
+ */
+function writeSessionCookie(signedIn: boolean) {
+  if (typeof document === 'undefined') return;
+  try {
+    document.cookie = signedIn
+      ? `${SESSION_COOKIE}=1; path=/; max-age=${SESSION_COOKIE_MAX_AGE}; samesite=lax`
+      : `${SESSION_COOKIE}=; path=/; max-age=0; samesite=lax`;
+  } catch {
+    /* cookies unavailable — client-side guards still apply */
+  }
+}
 
 /** One-shot message shown on the sign-in screen (e.g. "wrong workspace"). */
 export function consumeAuthNotice(): string | null {
@@ -66,10 +94,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const stored = readToken();
       if (!stored) {
+        writeSessionCookie(false);
         setLoading(false);
         return;
       }
 
+      writeSessionCookie(true);
       setToken(stored);
 
       try {
@@ -89,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           writeNotice(String((error as ApiError).message));
         }
         writeToken(null);
+        writeSessionCookie(false);
         setToken(null);
         setUser(null);
       } finally {
@@ -105,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await api.post<AuthResponse>('/api/auth/login', { username, password });
     writeNotice(null);
     writeToken(response.token);
+    writeSessionCookie(true);
     setToken(response.token);
     setUser(response.user);
     return response.user;
@@ -114,17 +146,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (
       username: string,
       password: string,
-      name?: string,
-      inviteCode?: string,
+      options: RegisterOptions = {},
     ) => {
       const response = await api.post<AuthResponse>('/api/auth/register', {
         username,
         password,
-        ...(name ? { name } : {}),
-        ...(inviteCode ? { inviteCode } : {}),
+        ...(options.email ? { email: options.email } : {}),
+        ...(options.displayName ? { displayName: options.displayName } : {}),
+        ...(options.inviteCode ? { inviteCode: options.inviteCode } : {}),
       });
       writeNotice(null);
       writeToken(response.token);
+      writeSessionCookie(true);
       setToken(response.token);
       setUser(response.user);
       return response.user;
@@ -134,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     writeToken(null);
+    writeSessionCookie(false);
     setToken(null);
     setUser(null);
   }, []);

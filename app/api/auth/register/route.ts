@@ -1,4 +1,15 @@
 import { NextResponse } from "next/server";
+import {
+  createSessionToken,
+  createUser,
+  findUserByEmail,
+  findUserByIdentifier,
+  toApiUser,
+} from "@/lib/server/authStore";
+
+export const runtime = "nodejs";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {
   try {
@@ -7,62 +18,84 @@ export async function POST(request: Request) {
 
     const identifier = (username || email || "").trim();
     const displayName = (fullName || name || identifier).trim();
+    const rawEmail = (email || recoveryEmail || "").trim();
 
     if (!identifier) {
       return NextResponse.json(
         { error: "Username is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!password) {
       return NextResponse.json(
         { error: "Password is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (typeof password !== "string" || password.length < 6) {
       return NextResponse.json(
         { error: "Password must be at least 6 characters" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Check if username is already taken (mock check for demo users)
-    const takenUsernames = ["admin", "root", "support"];
-    if (takenUsernames.includes(identifier.toLowerCase())) {
+    const isEmailIdentifier = identifier.includes("@");
+    const userEmail = isEmailIdentifier ? identifier : rawEmail || null;
+
+    if (userEmail && !EMAIL_PATTERN.test(userEmail)) {
+      return NextResponse.json(
+        { error: "Please enter a valid email address." },
+        { status: 400 },
+      );
+    }
+
+    const cleanUsername = isEmailIdentifier
+      ? identifier.split("@")[0]
+      : identifier;
+
+    if (cleanUsername.length < 3) {
+      return NextResponse.json(
+        { error: "Username must be at least 3 characters." },
+        { status: 400 },
+      );
+    }
+
+    const usernameTaken = findUserByIdentifier(cleanUsername);
+    if (usernameTaken) {
       return NextResponse.json(
         { error: "Username already taken" },
-        { status: 400 }
+        { status: 409 },
       );
     }
 
-    const isEmail = identifier.includes("@");
-    const userEmail = isEmail ? identifier : (recoveryEmail || email || null);
-    const cleanUsername = isEmail ? identifier.split("@")[0] : identifier;
+    if (userEmail) {
+      const emailTaken = findUserByEmail(userEmail);
+      if (emailTaken) {
+        return NextResponse.json(
+          { error: "An account with that email already exists." },
+          { status: 409 },
+        );
+      }
+    }
 
-    const userId = "usr_" + Buffer.from(identifier).toString("hex").substring(0, 8);
-    const tokenPayload = `${userId}:${userEmail || cleanUsername}:${displayName}`;
-    const token = Buffer.from(tokenPayload).toString("base64");
+    const user = createUser({
+      username: cleanUsername,
+      email: userEmail,
+      displayName: displayName || cleanUsername,
+      password,
+    });
 
     return NextResponse.json({
-      token,
-      user: {
-        id: userId,
-        username: cleanUsername,
-        displayName,
-        email: userEmail,
-        status: "online",
-        avatar:
-          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
-      },
+      token: createSessionToken(user),
+      user: toApiUser(user),
     });
   } catch (e: any) {
-    console.error("[Registration Error]", e.message);
+    process.stderr.write(`[register] ${e?.message || String(e)}\n`);
     return NextResponse.json(
       { error: e.message || "Sign up failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

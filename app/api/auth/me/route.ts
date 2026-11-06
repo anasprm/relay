@@ -1,31 +1,60 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import {
+  findUserById,
+  findUserByIdentifier,
+  parseSessionToken,
+  toApiUser,
+} from "@/lib/server/authStore";
+
+export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const token = authHeader.split(' ')[1];
-    const decoded = Buffer.from(token, 'base64').toString('utf-8');
-    const [userId, email, name] = decoded.split(':');
+    const token = authHeader.slice("Bearer ".length).trim();
+    const parsed = parseSessionToken(token);
 
-    if (!userId) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    if (!parsed) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
+
+    // Resolve the current record so profile changes and password resets are
+    // reflected immediately. Fall back to the token payload for old sessions.
+    const user =
+      findUserById(parsed.userId) ||
+      (parsed.email ? findUserByIdentifier(parsed.email) : null);
+
+    if (user) {
+      return NextResponse.json({ user: toApiUser(user) });
     }
 
     return NextResponse.json({
       user: {
-        id: userId,
-        username: email ? email.split('@')[0] : 'user',
-        fullName: name || 'Relay User',
-        email: email || 'user@relay.pro',
-        status: 'online',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        id: parsed.userId,
+        username: parsed.email ? parsed.email.split("@")[0] : "user",
+        displayName: parsed.displayName || "Relay User",
+        fullName: parsed.displayName || "Relay User",
+        email: parsed.email || "user@relay.pro",
+        avatar:
+          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+        avatarUrl:
+          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+        accent: "cyan",
+        status: "online",
+        online: true,
+        lastSeen: null,
+        discoverable: true,
       },
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message || 'Authentication check failed' }, { status: 401 });
+    process.stderr.write(`[me] ${e?.message || String(e)}\n`);
+    return NextResponse.json(
+      { error: e.message || "Authentication check failed" },
+      { status: 401 },
+    );
   }
 }

@@ -89,8 +89,13 @@ export function AuthScreen({ mode }: AuthScreenProps) {
 
     setSubmitting(true);
     try {
-      if (isRegister) await register(cleanUsername, password, inviteCode.trim() || undefined);
-      else await login(cleanUsername, password);
+      if (isRegister) {
+        await register(cleanUsername, password, {
+          inviteCode: inviteCode.trim() || undefined,
+        });
+      } else {
+        await login(cleanUsername, password);
+      }
       router.replace('/chat');
     } catch (caught) {
       setError(errorMessage(caught));

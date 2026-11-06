@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { RecoveryResponse } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
