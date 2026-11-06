@@ -41,17 +41,69 @@ const GEMINI_KEY_NAMES = [
 ];
 
 /**
- * Model IDs tried in order. Google retires old models (1.5 was shut down), so
- * we walk a list instead of hardcoding a single one.
+ * Model IDs tried in order. Google retires old models without notice (1.5, 2.0
+ * and 2.5 Flash are all gone for new keys), so we walk a list instead of
+ * hardcoding a single ID, and fall back to live model discovery if none work.
  */
 const GEMINI_MODELS = process.env.GEMINI_MODEL
   ? [process.env.GEMINI_MODEL]
   : [
-      "gemini-2.5-flash",
-      "gemini-2.0-flash",
+      "gemini-3.8-flash",
       "gemini-flash-latest",
-      "gemini-1.5-flash",
+      "gemini-3-flash",
+      "gemini-3-flash-preview",
     ];
+
+/**
+ * Ask the Gemini API which models this key can actually use, and return the
+ * Flash-family ones that support generateContent. Used only when the preferred
+ * list goes stale, so a future rename self-heals instead of silently falling
+ * back to canned replies.
+ */
+async function discoverGeminiModels(key: string): Promise<string[]> {
+  try {
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models?pageSize=200",
+      {
+        headers: { "x-goog-api-key": key },
+        cache: "no-store",
+      },
+    );
+    if (!response.ok) return [];
+
+    const data = (await response.json()) as {
+      models?: Array<{
+        name?: string;
+        supportedGenerationMethods?: string[];
+      }>;
+    };
+
+    const usable = (data.models ?? [])
+      .filter((model) =>
+        (model.supportedGenerationMethods ?? []).includes("generateContent"),
+      )
+      .map((model) => (model.name ?? "").replace(/^models\//, ""))
+      .filter((name) => name.includes("flash"))
+      // Newest version first: gemini-3.8-flash before gemini-2.5-flash.
+      .sort((a, b) => {
+        const version = (id: string) => {
+          const match = id.match(/(\d+)(?:\.(\d+))?/);
+          if (!match) return 0;
+          return Number(match[1]) * 1000 + Number(match[2] ?? 0);
+        };
+        return version(b) - version(a);
+      });
+
+    return usable.slice(0, 4);
+  } catch (error) {
+    process.stderr.write(
+      `[AI] Model discovery failed: ${
+        error instanceof Error ? error.message : String(error)
+      }\n`,
+    );
+    return [];
+  }
+}
 
 function extractPrompt(body: unknown): string {
   if (!body || typeof body !== "object") return "";
@@ -278,8 +330,9 @@ async function callGemini(prompt: string): Promise<GeminiResult> {
 
   const attempts: Array<{ model: string; status: number; error: string }> = [];
   let lastError = "Gemini request failed.";
+  let keyIsInvalid = false;
 
-  for (const model of GEMINI_MODELS) {
+  const attemptModel = async (model: string) => {
     try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
@@ -301,6 +354,7 @@ async function callGemini(prompt: string): Promise<GeminiResult> {
               maxOutputTokens: 1024,
             },
           }),
+          cache: "no-store",
         },
       );
 
@@ -309,14 +363,13 @@ async function callGemini(prompt: string): Promise<GeminiResult> {
         const shortError = errorBody.slice(0, 300);
         attempts.push({ model, status: response.status, error: shortError });
         lastError = `Gemini ${model} returned ${response.status}`;
+        if (/API_KEY_INVALID|API key not valid/i.test(errorBody)) {
+          keyIsInvalid = true;
+        }
         process.stderr.write(
           `[AI] Gemini ${model} (key via ${keyInfo.source}) returned ${response.status}: ${shortError}\n`,
         );
-        // A bad key won't get better on another model — stop early.
-        if (response.status === 400 || response.status === 401 || response.status === 403) {
-          if (/API_KEY_INVALID|API key not valid/i.test(errorBody)) break;
-        }
-        continue;
+        return null;
       }
 
       const data = await response.json();
@@ -328,16 +381,39 @@ async function callGemini(prompt: string): Promise<GeminiResult> {
 
       if (!text) {
         attempts.push({ model, status: 200, error: "Empty candidate text" });
-        continue;
+        return null;
       }
 
-      return { ok: true, text, model };
+      return { ok: true as const, text, model };
     } catch (geminiError) {
       const message =
         geminiError instanceof Error ? geminiError.message : String(geminiError);
       attempts.push({ model, status: 0, error: message });
       lastError = message;
       process.stderr.write(`[AI] Gemini ${model} transport error: ${message}\n`);
+      return null;
+    }
+  };
+
+  for (const model of GEMINI_MODELS) {
+    const result = await attemptModel(model);
+    if (result) return result;
+    if (keyIsInvalid) return { ok: false, error: lastError, attempts };
+  }
+
+  // Every preferred ID is gone (Google retires models often) — ask the API
+  // which ones exist for this key and retry with those.
+  if (!keyIsInvalid) {
+    const discovered = await discoverGeminiModels(keyInfo.key);
+    const untried = discovered.filter((model) => !GEMINI_MODELS.includes(model));
+    process.stderr.write(
+      `[AI] Falling back to discovered models: ${untried.join(", ") || "none"}\n`,
+    );
+
+    for (const model of untried) {
+      const result = await attemptModel(model);
+      if (result) return result;
+      if (keyIsInvalid) break;
     }
   }
 
