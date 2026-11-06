@@ -690,7 +690,7 @@ export function EmojiTray({ open, onClose, onSelect }: EmojiTrayProps) {
 /* Chat page                                                          */
 /* ------------------------------------------------------------------ */
 
-type MobileView = 'LIST' | 'CHAT' | 'COPILOT';
+type MobileView = 'LIST' | 'CHAT' | 'COPILOT' | 'STATUS' | 'COMMUNITIES' | 'CALLS';
 
 export default function ChatPage() {
   const router = useRouter();
@@ -991,6 +991,9 @@ export default function ChatPage() {
     const offLeft = '-translate-x-full';
     switch (mobileView) {
       case 'LIST':
+      case 'STATUS':
+      case 'COMMUNITIES':
+      case 'CALLS':
         return { list: center, chat: offRight, copilot: offLeft };
       case 'CHAT':
         return { list: offLeft, chat: center, copilot: offRight };
@@ -1074,19 +1077,55 @@ export default function ChatPage() {
         )}
       </div>
       <div className="h-16 border-t border-[#2A2A2C] bg-[#0A0A0C] px-3 flex items-center justify-around z-20 relay-pb-safe">
-        <button onClick={() => {}} className="flex flex-col items-center gap-1 text-[#25D366]" aria-label="Chats">
+        <button
+          onClick={() => setMobileView('LIST')}
+          className={cn(
+            'flex flex-col items-center gap-1',
+            mobileView === 'LIST'
+              ? 'text-[#25D366]'
+              : 'text-[#8E8E93] hover:text-[#FFFFFF] transition-colors',
+          )}
+          aria-label="Chats"
+        >
           <MessageCircle className="h-5 w-5" />
           <span className="text-[10px]">Chats</span>
         </button>
-        <button onClick={() => {}} className="flex flex-col items-center gap-1 text-[#8E8E93] hover:text-[#FFFFFF] transition-colors" aria-label="Status">
+        <button
+          onClick={() => setMobileView('STATUS')}
+          className={cn(
+            'flex flex-col items-center gap-1',
+            mobileView === 'STATUS'
+              ? 'text-[#25D366]'
+              : 'text-[#8E8E93] hover:text-[#FFFFFF] transition-colors',
+          )}
+          aria-label="Status"
+        >
           <Play className="h-5 w-5" />
           <span className="text-[10px]">Status</span>
         </button>
-        <button onClick={() => {}} className="flex flex-col items-center gap-1 text-[#8E8E93] hover:text-[#FFFFFF] transition-colors" aria-label="Communities">
+        <button
+          onClick={() => setMobileView('COMMUNITIES')}
+          className={cn(
+            'flex flex-col items-center gap-1',
+            mobileView === 'COMMUNITIES'
+              ? 'text-[#25D366]'
+              : 'text-[#8E8E93] hover:text-[#FFFFFF] transition-colors',
+          )}
+          aria-label="Communities"
+        >
           <Users className="h-5 w-5" />
           <span className="text-[10px]">Communities</span>
         </button>
-        <button onClick={() => {}} className="flex flex-col items-center gap-1 text-[#8E8E93] hover:text-[#FFFFFF] transition-colors" aria-label="Calls">
+        <button
+          onClick={() => setMobileView('CALLS')}
+          className={cn(
+            'flex flex-col items-center gap-1',
+            mobileView === 'CALLS'
+              ? 'text-[#25D366]'
+              : 'text-[#8E8E93] hover:text-[#FFFFFF] transition-colors',
+          )}
+          aria-label="Calls"
+        >
           <Phone className="h-5 w-5" />
           <span className="text-[10px]">Calls</span>
         </button>
@@ -1156,18 +1195,20 @@ export default function ChatPage() {
           </div>
         )}
       </div>
-      <Composer
-        disabled={!activeId}
-        draft={draft}
-        setDraft={setDraft}
-        pendingAttachment={pendingAttachment}
-        onRemoveAttachment={handleRemoveAttachment}
-        onToggleEmoji={() => setEmojiOpen((p) => !p)}
-        onSend={handleSend}
-        emojiOpen={emojiOpen}
-        onFileChange={handleFileChange}
-        fileInputRef={fileInputRef}
-      />
+      {activeId && (
+        <Composer
+          disabled={!activeId}
+          draft={draft}
+          setDraft={setDraft}
+          pendingAttachment={pendingAttachment}
+          onRemoveAttachment={handleRemoveAttachment}
+          onToggleEmoji={() => setEmojiOpen((p) => !p)}
+          onSend={handleSend}
+          emojiOpen={emojiOpen}
+          onFileChange={handleFileChange}
+          fileInputRef={fileInputRef}
+        />
+      )}
     </div>
   );
 
