@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { ChatFilters } from './ChatFilters';
 import { StoriesRail } from './StoriesRail';
 import { MessageList } from './MessageList';
+import { MessageSquarePlus } from 'lucide-react';
 import type { Conversation, Message } from '@/lib/types';
 
 type CacheState = 'idle' | 'bootstrapping' | 'synching' | 'error';
@@ -48,6 +49,7 @@ export function GlassmorphicLayout({
   cacheState: CacheState;
   filter: 'all' | 'unread' | 'favorites' | 'groups' | 'muted';
   onFilterChange: (f: 'all' | 'unread' | 'favorites' | 'groups' | 'muted') => void;
+  onNewChat?: () => void;
   loading?: boolean;
 }) {
   const router = useRouter();
@@ -140,13 +142,22 @@ export function GlassmorphicLayout({
     >
       <div className="flex h-14 items-center justify-between px-3">
         <span className="font-medium text-sm">Chats</span>
-        <button
-          onClick={() => router.push('/')}
-          className="p-1 rounded hover:bg-[#27272a]/30 transition-colors"
-          aria-label="Back to home"
-        >
-          ←
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push('/')}
+            className="p-1 rounded hover:bg-[#27272a]/30 transition-colors"
+            aria-label="Back to home"
+          >
+            ←
+          </button>
+          <button
+            onClick={onNewChat}
+            className="p-1 rounded hover:bg-[#27272a]/30 transition-colors text-[#25D366]"
+            aria-label="New conversation"
+          >
+            <MessageSquarePlus size={20} strokeWidth={1.8} />
+          </button>
+        </div>
       </div>
 
       <ChatFilters

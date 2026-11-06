@@ -15,8 +15,7 @@ import { MessageList } from './MessageList';
 import { ChatLockDialog } from './ChatLockDialog';
 import { ContactAliasDialog } from './ContactAliasDialog';
 import { ForwardDialog } from './ForwardDialog';
-import { NewChatDialog } from './NewChatDialog';
-import { NewGroupDialog } from './NewGroupDialog';
+import { NewChatModal } from './NewChatModal';
 import { GroupRenameDialog } from './GroupRenameDialog';
 import { ProfileDialog } from './ProfileDialog';
 import { Sidebar, type ConversationFilter } from './Sidebar';
@@ -107,8 +106,6 @@ export function ChatShell() {
   const [connected, setConnected] = useState(false);
   const [mobileThreadOpen, setMobileThreadOpen] = useState(false);
   const [newChatOpen, setNewChatOpen] = useState(false);
-  const [newChatQuery, setNewChatQuery] = useState('');
-  const [newGroupOpen, setNewGroupOpen] = useState(false);
   const [groupRenameOpen, setGroupRenameOpen] = useState(false);
   const [groupBusy, setGroupBusy] = useState(false);
   const [groupError, setGroupError] = useState<string | null>(null);
@@ -134,6 +131,11 @@ export function ChatShell() {
     setStoryViewerGroup: setStoryViewerGroupRef,
     me: myStory,
   } = useStories({ socket, enabled: !!token && !!user });
+
+  const handleSelectConversationFromModal = useCallback((conversationId: string) => {
+    setActiveId(conversationId);
+    setNewChatOpen(false);
+  }, []);
 
   // Redirect unauthenticated users inside useEffect (unconditional hook execution)
   useEffect(() => {
@@ -302,18 +304,28 @@ export function ChatShell() {
   // Render the Glassmorphic 3-pane layout with filter tabs
   // ---------------------------------------------------------------------
   return (
-    <GlassmorphicLayout
-      user={user}
-      token={token}
-      loading={loading}
-      conversations={conversations}
-      activeId={activeId}
-      activeConversation={activeConversation}
-      messages={messages}
-      cacheState={cacheState}
-      filter={filter}
-      onFilterChange={setFilter}
-    />
+    <>
+      <GlassmorphicLayout
+        user={user}
+        token={token}
+        loading={loading}
+        conversations={conversations}
+        activeId={activeId}
+        activeConversation={activeConversation}
+        messages={messages}
+        cacheState={cacheState}
+        filter={filter}
+        onFilterChange={setFilter}
+        onNewChat={() => setNewChatOpen(true)}
+      />
+      <NewChatModal
+        open={newChatOpen}
+        onClose={() => setNewChatOpen(false)}
+        onSelectConversation={handleSelectConversationFromModal}
+        conversations={conversations}
+        currentUserId={user?.id || null}
+      />
+    </>
   );
 }
 
