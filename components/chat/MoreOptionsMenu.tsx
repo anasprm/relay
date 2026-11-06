@@ -71,7 +71,7 @@ export function MoreOptionsMenu({
   const positionMenu = useCallback(() => {
     const anchor = anchorRef.current;
     const menu = menuRef.current;
-    if (!open || !anchor || !menu) return;
+    if (!open || !anchor || !menu || typeof window === 'undefined') return;
     const rect = anchor.getBoundingClientRect();
     let x = rect.left;
     let y = rect.bottom + 6;
@@ -89,8 +89,7 @@ export function MoreOptionsMenu({
     if (!open) return;
     positionMenu();
     const raf = requestAnimationFrame(positionMenu);
-    const onResize = () => positionMenu();
-    const onPointerDown = (event: PointerEvent) => {
+    const handleClickOutside = (event: MouseEvent) => {
       if (
         menuRef.current &&
         !menuRef.current.contains(event.target as Node) &&
@@ -100,17 +99,17 @@ export function MoreOptionsMenu({
         onClose();
       }
     };
-    const onKeyDown = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
     };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    window.addEventListener('resize', onResize);
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', positionMenu);
     return () => {
       cancelAnimationFrame(raf);
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('resize', onResize);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', positionMenu);
     };
   }, [open, onClose, anchorRef, positionMenu]);
 
