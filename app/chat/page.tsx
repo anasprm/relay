@@ -568,13 +568,29 @@ export function Composer({
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSend(); }} className="w-full">
-      <div className="flex items-end gap-1.5 bg-[#0A0A0C] border-t border-[#1C1C1E] px-2 py-1.5 pointer-events-auto">
-        {/* Left: Attachment */}
+      {/* Pending attachment chip */}
+      {pendingAttachment && (
+        <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-[#2A2A2C] border border-[#2A2A2C] shadow-lg">
+          <ImageIcon className="h-4 w-4 text-[#25D366] shrink-0" />
+          <span className="text-xs text-[#8E8E93] truncate">{pendingAttachment.name}</span>
+          <button
+            onClick={onRemoveAttachment}
+            className="p-1 rounded hover:bg-[#3A3A3C] text-[#8E8E93] hover:text-[#FF3B30] transition-colors active:scale-[0.97]"
+            aria-label="Remove attachment"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+
+      <div className="p-3 bg-[#0A0A0C] border-t border-[#1C1C1E] flex items-center gap-2 select-none">
+        {/* Left: Attachment Button */}
         <label
-          className="p-1.5 rounded-[14px] text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] cursor-pointer"
-          aria-label="Attach file"
+          type="button"
+          className="p-2.5 text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-zinc-800/60 shrink-0 cursor-pointer"
+          aria-label="Attach media"
         >
-          <Paperclip className="h-5 w-5" />
+          <Paperclip className="w-5 h-5" />
           <input
             type="file"
             ref={fileInputRef}
@@ -584,60 +600,48 @@ export function Composer({
           />
         </label>
 
-        {/* Center: Textarea */}
-        <div className="flex-1 relative min-w-0">
+        {/* Central Input Container Pill */}
+        <div className="flex-1 flex items-center bg-[#1C1C1E] rounded-full px-4 py-2 border border-zinc-800/80 focus-within:border-[#25D366] transition-all shadow-inner">
           <textarea
             ref={textareaRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={disabled}
             placeholder="Type a message…"
             rows={1}
             maxRows={5}
-            disabled={disabled}
-            className="w-full bg-[#0A0A0C]/40 border border-[#2A2A2C] rounded-[14px] text-sm text-[#FFFFFF] placeholder-[#8E8E93] resize-none focus:outline-none focus:border-[#25D366]/50 relay-scrollbar-hide"
-            onKeyDown={handleKeyDown}
-            style={{ maxHeight: 120, overflowY: 'auto', paddingRight: '48px' }}
+            className="w-full bg-transparent text-white placeholder-zinc-500 focus:outline-none text-sm py-1"
+            style={{ maxHeight: 120, overflowY: 'auto' }}
           />
-          {/* Inside right border: Emoji trigger */}
-          <button
-            type="button"
-            onClick={onToggleEmoji}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-[14px] text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]"
-            aria-label="Emoji picker"
-          >
-            <Smile className="h-5 w-5" />
+          {/* Emoji Picker Trigger */}
+          <div className="relative ml-2 shrink-0">
+            <button
+              type="button"
+              onClick={onToggleEmoji}
+              className="text-zinc-400 hover:text-white transition-colors p-1"
+              title="Emoji"
+              disabled={disabled}
+            >
+              <Smile className="w-5 h-5" />
+            </button>
             {emojiOpen && (
               <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] border-2 border-black" />
             )}
-          </button>
-          {pendingAttachment && (
-            <div className="absolute bottom-full left-1 right-1 mb-1 flex items-center gap-2 px-2 py-1 rounded-lg bg-[#2A2A2C] border border-[#2A2A2C] shadow-lg">
-              <ImageIcon className="h-4 w-4 text-[#25D366] shrink-0" />
-              <span className="text-xs text-[#8E8E93] truncate">{pendingAttachment.name}</span>
-              <button
-                onClick={onRemoveAttachment}
-                className="p-1 rounded hover:bg-[#3A3A3C] text-[#8E8E93] hover:text-[#FF3B30] transition-colors active:scale-[0.97]"
-                aria-label="Remove attachment"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          )}
+          </div>
         </div>
 
-        {/* Far right: Send / Mic morph */}
+        {/* Right Send / Mic Action Button */}
         <button
           type="submit"
           disabled={isEmpty || disabled}
           className={cn(
-            'p-2 rounded-[14px] text-[#FFFFFF] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97]',
-            isEmpty || disabled
-              ? 'bg-[#1C1C1E] border border-[#2A2A2C] text-[#8E8E93]'
-              : 'bg-[#25D366] hover:bg-[#1E9E52] shadow-[0_0_16px_rgba(37,211,102,0.35)]',
+            "p-3 bg-[#25D366] text-black font-medium rounded-full hover:bg-[#20ba5a] transition-all shadow-md shrink-0 flex items-center justify-center",
+            isEmpty || disabled ? "opacity-40 cursor-not-allowed" : ""
           )}
-          aria-label={isEmpty ? 'Record voice message' : 'Send message'}
+          aria-label={isEmpty ? "Record voice message" : "Send message"}
         >
-          {isEmpty ? <Mic className="h-5 w-5" /> : <Send className="h-5 w-5" />}
+          {isEmpty ? <Mic className="w-5 h-5 text-black" /> : <Send className="w-5 h-5 text-black" />}
         </button>
       </div>
     </form>
