@@ -24,6 +24,8 @@ import {
   Image as ImageIcon,
   Lock,
   MessageSquarePlus,
+  Mic,
+  MicOff,
   MoreVertical,
   Paperclip,
   Phone,
@@ -34,11 +36,13 @@ import {
   ShieldCheck,
   Smile,
   Star,
+  StopWatch,
   UserPlus,
   UserRound,
   Users,
-  X,
   Video,
+  VideoOff,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Conversation, Message, User } from "@/lib/types";
@@ -315,6 +319,10 @@ function CopilotBriefPanel({
   const [summary, setSummary] = useState<string | null>(null);
   const [tasks, setTasks] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [aiInput, setAiInput] = useState("");
+  const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([
+    { role: "assistant", text: "Hello! I'm your Relay AI assistant. How can I help you today?" },
+  ]);
 
   const handleSummarize = useCallback(() => {
     if (!onSummarize) return;
@@ -338,6 +346,15 @@ function CopilotBriefPanel({
     }, 1200);
   }, [onExtractTasks]);
 
+  const handleAiSend = useCallback(() => {
+    if (!aiInput.trim()) return;
+    setAiMessages((prev) => [...prev, { role: "user", text: aiInput }]);
+    setAiInput("");
+    setTimeout(() => {
+      setAiMessages((prev) => [...prev, { role: "assistant", text: `I received your message: "${aiInput}". How else can I assist you with Relay?` }]);
+    }, 600);
+  }, [aiInput]);
+
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       {/* Header */}
@@ -351,6 +368,55 @@ function CopilotBriefPanel({
         <button className="p-1.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Close">
           <X className="h-4 w-4" />
         </button>
+      </div>
+
+      {/* AI Chat History */}
+      <div className="flex-1 overflow-y-auto p-2 space-y-3">
+        {aiMessages.map((msg, i) => (
+          <div
+            key={i}
+            className={cn(
+              "max-w-[80%] rounded-xl px-3 py-2 text-xs whitespace-pre-wrap break-words",
+              msg.role === "user"
+                ? "ml-auto bg-cyan-600 text-white rounded-tr-none"
+                : "mr-auto bg-white/5 border border-white/10 text-slate-200 rounded-tl-none"
+            )}
+          >
+            {msg.text}
+          </div>
+        ))}
+      </div>
+
+      {/* AI Input */}
+      <div className="border-t border-white/10 pt-3 bg-[#0a0a0c]/20 backdrop-blur-sm">
+        <div className="flex items-end gap-2 p-2">
+          <input
+            type="text"
+            value={aiInput}
+            onChange={(e) => setAiInput(e.target.value)}
+            placeholder="Ask Relay AI anything…"
+            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleAiSend();
+              }
+            }}
+          />
+          <button
+            onClick={handleAiSend}
+            disabled={!aiInput.trim()}
+            className={cn(
+              "p-2 rounded-xl text-white font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed",
+              aiInput.trim()
+                ? "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500"
+                : "bg-white/5 border border-white/10 text-slate-400"
+            )}
+            aria-label="Send AI message"
+          >
+            <Send className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Brief */}
@@ -578,6 +644,120 @@ function MoreOptionsMenu({
   );
 }
 
+function CallOverlay({
+  open,
+  onClose,
+  callType,
+  peer,
+}: {
+  open: boolean;
+  onClose: () => void;
+  callType: "audio" | "video";
+  peer: { name: string; avatarUrl: string } | null;
+}) {
+  const [connected, setConnected] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [cameraOff, setCameraOff] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setConnected(false);
+      setCallDuration(0);
+      setMuted(false);
+      setCameraOff(false);
+      return;
+    }
+
+    // Simulate incoming call connecting after 2 seconds
+    const timer = setTimeout(() => {
+      setConnected(true);
+    }, 2000);
+
+    // Start duration timer once connected
+    const durationInterval = setInterval(() => {
+      if (connected) setCallDuration((prev) => prev + 1);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(durationInterval);
+    };
+  }, [open, connected]);
+
+  if (!open) return null;
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
+  const peerName = peer?.name || "Contact";
+  const peerAvatar = peer?.avatarUrl || "https://ui-avatars.com/api/?name=User&background=06b6d4&color=fff";
+
+  return (
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div className="w-full max-w-md h-[70vh] bg-[#0a0a0c]/95 border border-white/10 rounded-3xl shadow-2xl flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
+        {/* Avatar with pulsing ring */}
+        <div className="relative mb-6">
+          <div
+            className={`absolute -inset-1 rounded-full border-2 ${connected ? "border-emerald-500" : "border-cyan-500"} animate-pulse`}
+          />
+          <div className="relative h-24 w-24 shrink-0">
+            <img
+              src={peerAvatar}
+              alt={peerName}
+              className="h-full w-full rounded-full object-cover border-2 border-white/20"
+            />
+          </div>
+        </div>
+
+        {/* Contact name */}
+        <h2 className="text-xl font-bold text-white">{peerName}</h2>
+        <p className="text-slate-400 text-sm mb-6">{connected ? "Connected" : "Calling…"}</p>
+
+        {/* Duration */}
+        {connected && (
+          <div className="mb-8 text-[18px] font-mono text-white">
+            {formatTime(callDuration)}
+          </div>
+        )}
+
+        {/* Controls */}
+        <div className="flex items-center gap-4">
+          {callType === "video" && (
+            <button
+              onClick={() => setCameraOff((prev) => !prev)}
+              className={cn("p-3 rounded-full bg-white/5 transition-colors", cameraOff ? "text-slate-400" : "text-white")}
+              aria-label={cameraOff ? "Enable camera" : "Disable camera"}
+            >
+              <VideoOff className="h-5 w-5" />
+            </button>
+          )}
+          <button
+            onClick={() => setMuted((prev) => !prev)}
+            className={cn("p-3 rounded-full bg-white/5 transition-colors", muted ? "text-slate-400" : "text-white")}
+            aria-label={muted ? "Unmute" : "Mute"}
+          >
+            {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+          </button>
+          <button
+            onClick={onClose}
+            className="p-3 rounded-full bg-rose-600 hover:bg-rose-500 text-white transition-colors shadow-lg shadow-rose-600/30"
+            aria-label="End call"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* End hint */}
+        <p className="mt-6 text-xs text-slate-500">Tap to end call</p>
+      </div>
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------------------
    Main Chat Page
    ------------------------------------------------------------------------- */
@@ -602,7 +782,12 @@ export default function ChatPage() {
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [fileInputRef, setFileInputRef] = useState<HTMLInputElement | null>(null);
+  const [moreOptionsRef, setMoreOptionsRef] = useState<HTMLButtonElement | null>(null);
   const [pendingAttachment, setPendingAttachment] = useState<{ name: string; url: string; size: number } | null>(null);
+
+  // Call state
+  const [isCalling, setIsCalling] = useState(false);
+  const [callType, setCallType] = useState<"audio" | "video">("audio");
 
   // -----------------------------------------------------------------
   // Effects
@@ -634,6 +819,17 @@ export default function ChatPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showEmojiPicker]);
+
+  // Close more options menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showMoreOptions && moreOptionsRef.current && !moreOptionsRef.current.contains(e.target as Node)) {
+        setShowMoreOptions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showMoreOptions, moreOptionsRef]);
 
   // -----------------------------------------------------------------
   // Derived
@@ -719,6 +915,11 @@ export default function ChatPage() {
 
   const handleRemoveAttachment = useCallback(() => {
     setPendingAttachment(null);
+  }, []);
+
+  const handleStartCall = useCallback((type: "audio" | "video") => {
+    setCallType(type);
+    setIsCalling(true);
   }, []);
 
   const handleClearChat = useCallback(() => {
@@ -918,21 +1119,27 @@ export default function ChatPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowMoreOptions((prev) => !prev)}
-              className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+              ref={moreOptionsRef}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMoreOptions((prev) => !prev);
+              }}
+              className="relative p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
               aria-label="More options"
             >
               <MoreVertical className="h-5 w-5" />
             </button>
             <button
+              onClick={() => handleStartCall("audio")}
               className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
-              aria-label="Call"
+              aria-label="Start audio call"
             >
               <Phone className="h-5 w-5" />
             </button>
             <button
+              onClick={() => handleStartCall("video")}
               className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
-              aria-label="Video"
+              aria-label="Start video call"
             >
               <Video className="h-5 w-5" />
             </button>
@@ -1066,6 +1273,21 @@ export default function ChatPage() {
         onSummarize={() => {}}
         onExtractTasks={() => {}}
       />
+
+      {/* ========================================================
+         Call Overlay Modal
+         ======================================================== */}
+      {isCalling && (
+        <CallOverlay
+          open={isCalling}
+          onClose={() => setIsCalling(false)}
+          callType={callType}
+          peer={{
+            name: activeConversation?.title || "Contact",
+            avatarUrl: activeConversation?.other?.avatarUrl || "https://ui-avatars.com/api/?name=Contact&background=06b6d4&color=fff",
+          }}
+        />
+      )}
 
       {/* ========================================================
          Modals
