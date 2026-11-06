@@ -453,8 +453,8 @@ function CopilotBriefPanel({
   }, [aiInput]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-      <div className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C]/30 border-b border-[#2A2A2C] px-4">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#0A0A0C] md:w-[360px] md:shrink-0">
+      <div className="flex h-16 shrink-0 items-center justify-between border-b border-[#2A2A2C] bg-[#0A0A0C]/30 px-4">
         <div className="flex items-center gap-2">
           <div className="h-6 w-6 rounded-full bg-gradient-to-r from-[#25D366] to-[#1E9E52] flex items-center justify-center text-white text-[10px] font-bold">
             AI
@@ -465,7 +465,7 @@ function CopilotBriefPanel({
           <X className="h-4 w-4" />
         </button>
       </div>
-      <div ref={aiScrollRef} className="flex-1 overflow-y-auto p-2 space-y-3">
+      <div ref={aiScrollRef} className="min-h-0 flex-1 overflow-y-auto p-3 space-y-3">
         {aiMessages.map((msg, i) => (
           <div
             key={i}
@@ -488,38 +488,14 @@ function CopilotBriefPanel({
           </div>
         )}
       </div>
-      <div className="border-t border-[#2A2A2C] pt-3 bg-[#0A0A0C]/20 backdrop-blur-sm">
-        <div className="flex items-end gap-2 p-2">
-          <input
-            type="text"
-            value={aiInput}
-            onChange={(e) => setAiInput(e.target.value)}
-            placeholder="Ask Relay AI anything…"
-            className="flex-1 bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl px-3 py-2 text-sm text-[#FFFFFF] placeholder-[#8E8E93] focus:outline-none focus:border-[#25D366] transition-all"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleAiSend();
-              }
-            }}
-          />
-          <button
-            onClick={handleAiSend}
-            disabled={!aiInput.trim()}
-            className={cn(
-              "p-2 rounded-xl text-[#FFFFFF] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed",
-              aiInput.trim()
-                ? "bg-[#25D366] hover:bg-[#1E9E52]"
-                : "bg-[#1C1C1E] border border-[#2A2A2C] text-[#8E8E93]"
-            )}
-            aria-label="Send AI message"
-          >
-            <Send className="h-4 w-4" />
-          </button>
+      <div className="shrink-0 border-t border-[#2A2A2C] bg-[#0F0F11] p-3">
+        <div className="mb-2 flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#25D366]" />
+          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#FFFFFF]">
+            Active Conversation Brief
+          </h3>
         </div>
-      </div>
-      <div className="bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl p-3">
-        <h3 className="font-semibold text-xs text-[#FFFFFF] mb-2">Active Conversation Brief</h3>
+        <div className="max-h-40 overflow-y-auto pr-1">
         {loading ? (
           <div className="flex flex-col gap-2">
             <div className="h-3 w-1/2 bg-[#2A2A2C] rounded animate-pulse" />
@@ -574,33 +550,65 @@ function CopilotBriefPanel({
         {!loading && !activeConversation ? (
           <div className="text-xs text-[#8E8E93] italic">Select a conversation to see AI-powered insights.</div>
         ) : null}
+        </div>
       </div>
-      <div className="bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl p-3">
-        <h3 className="font-semibold text-xs text-[#FFFFFF] mb-2">Quick Actions</h3>
-        <div className="grid grid-cols-2 gap-2">
+      <div className="flex shrink-0 gap-2 border-t border-[#2A2A2C] bg-[#0F0F11] px-3 py-2">
+        <button
+          onClick={handleSummarize}
+          disabled={loading}
+          className={cn(
+            "flex-1 rounded-lg px-3 py-1.5 text-[11px] font-medium transition-all",
+            loading
+              ? "cursor-not-allowed bg-[#1C1C1E] text-[#8E8E93]"
+              : "bg-[#2A2A2C]/70 text-[#25D366] hover:bg-[#2A2A2C]"
+          )}
+        >
+          Summarize
+        </button>
+        <button
+          onClick={handleExtractTasks}
+          disabled={loading}
+          className={cn(
+            "flex-1 rounded-lg px-3 py-1.5 text-[11px] font-medium transition-all",
+            loading
+              ? "cursor-not-allowed bg-[#1C1C1E] text-[#8E8E93]"
+              : "bg-[#2A2A2C]/70 text-[#25D366] hover:bg-[#2A2A2C]"
+          )}
+        >
+          Extract tasks
+        </button>
+      </div>
+      <div className="shrink-0 border-t border-[#2A2A2C] bg-[#0A0A0C] p-2">
+        <div className="flex items-end gap-2">
+          <input
+            type="text"
+            value={aiInput}
+            onChange={(e) => setAiInput(e.target.value)}
+            placeholder="Ask Relay AI anything…"
+            className="flex-1 bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl px-3 py-2 text-sm text-[#FFFFFF] placeholder-[#8E8E93] focus:outline-none focus:border-[#25D366] transition-all"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleAiSend();
+              }
+            }}
+          />
           <button
-            onClick={handleSummarize}
-            disabled={loading}
+            onClick={handleAiSend}
+            disabled={!aiInput.trim()}
             className={cn(
-              "px-3 py-2 rounded-lg text-xs font-medium transition-all",
-              loading ? "bg-[#1C1C1E] text-[#8E8E93] cursor-not-allowed" : "bg-[#2A2A2C] border border-[#2A2A2C] text-[#25D366] hover:bg-[#2A2A2C]/50"
+              "p-2 rounded-xl text-[#FFFFFF] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed",
+              aiInput.trim()
+                ? "bg-[#25D366] hover:bg-[#1E9E52]"
+                : "bg-[#1C1C1E] border border-[#2A2A2C] text-[#8E8E93]"
             )}
+            aria-label="Send AI message"
           >
-            Summarize thread
-          </button>
-          <button
-            onClick={handleExtractTasks}
-            disabled={loading}
-            className={cn(
-              "px-3 py-2 rounded-lg text-xs font-medium transition-all",
-              loading ? "bg-[#1C1C1E] text-[#8E8E93] cursor-not-allowed" : "bg-[#2A2A2C] border border-[#2A2A2C] text-[#25D366] hover:bg-[#2A2A2C]/50"
-            )}
-          >
-            Extract tasks
+            <Send className="h-4 w-4" />
           </button>
         </div>
       </div>
-      <div className="p-4 border-t border-[#2A2A2C]">
+      <div className="shrink-0 px-4 py-2">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-[#25D366]/20 flex items-center justify-center text-[#25D366] text-xs font-bold">
             A
