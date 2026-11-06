@@ -28,6 +28,7 @@ import { useToast } from '@/lib/ToastProvider';
 import { cn } from '@/lib/utils';
 import type { Attachment, Message, StoryReplyContext } from '@/lib/types';
 import { AudioMessage } from './AudioMessage';
+import { LinkPreview } from './LinkPreview';
 
 const QUICK_REACTIONS = ['❤️', '👍', '😂', '😮', '😢', '🙏'];
 
@@ -597,14 +598,26 @@ export function MessageBubble({
           ) : null}
 
           {message.text && (
-            <p
-              className={cn(
-                'whitespace-pre-wrap break-words [overflow-wrap:anywhere]',
-                message.attachment && 'px-1',
+            <>
+              <p
+                className={cn(
+                  'whitespace-pre-wrap break-words [overflow-wrap:anywhere]',
+                  message.attachment && 'px-1',
+                )}
+              >
+                {highlightText(message.text, searchQuery, activeMatch)}
+              </p>
+              {(message.text.match(/https?:\/\/\S+/g) || []).map(
+                (url, idx) => (
+                  <LinkPreview
+                    key={`${msg.id}-link-${idx}`}
+                    url={url}
+                    senderName={message.sender.displayName}
+                    timestamp={formatTime(message.createdAt)}
+                  />
+                ),
               )}
-            >
-              {highlightText(message.text, searchQuery, activeMatch)}
-            </p>
+            </>
           )}
 
           <div

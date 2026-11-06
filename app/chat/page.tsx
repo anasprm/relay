@@ -714,6 +714,8 @@ export default function ChatPage() {
   const [isCalling, setIsCalling] = useState(false);
   const [callType, setCallType] = useState<'audio' | 'video'>('audio');
   const [pendingAttachment, setPendingAttachment] = useState<{ name: string } | null>(null);
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
+  const [chatSearchOpen, setChatSearchOpen] = useState(false);
   const moreOptionsRef = useRef<HTMLButtonElement>(null);
   const profileMenuRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -763,9 +765,16 @@ export default function ChatPage() {
   }, [loading, user, token, router, conversations.length]);
 
   const activeConversation = conversations.find((c) => c.id === activeId);
-  const visibleMessages = (messages || []).filter(
-    (m) => m.conversationId === activeId,
-  );
+  const visibleMessages = (messages || [])
+    .filter((m) => m.conversationId === activeId)
+    .filter((m) => {
+      if (!chatSearchQuery.trim()) return true;
+      const needle = chatSearchQuery.trim().toLowerCase();
+      return (
+        (m.text || '').toLowerCase().includes(needle) ||
+        (m.sender?.displayName || '').toLowerCase().includes(needle)
+      );
+    });
 
   const filteredConversations = useMemo(() => {
     const needle = searchQuery.toLowerCase();
@@ -1282,6 +1291,9 @@ export default function ChatPage() {
           <button onClick={openCopilot} className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] pointer-events-auto" aria-label="AI Copilot">
             <Sparkles className="h-5 w-5" />
           </button>
+          <button onClick={() => setChatSearchOpen((p) => !p)} className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] pointer-events-auto" aria-label="Search conversation">
+            <Search className="h-5 w-5" />
+          </button>
           <button className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] pointer-events-auto" aria-label="Call">
             <Phone className="h-5 w-5" />
           </button>
@@ -1306,15 +1318,16 @@ export default function ChatPage() {
                   5 * 60 * 1000
               }
               onReaction={handleReaction}
-            />
-          ))
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center text-[#8E8E93] pt-20">
-            <p className="text-sm mb-2">No messages yet</p>
-            <p className="text-xs">Start the conversation by sending a message below.</p>
-          </div>
-        )}
-      </div>
+                searchQuery={chatSearchQuery}
+              />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center text-[#8E8E93] pt-20">
+              <p className="text-sm mb-2">No messages yet</p>
+              <p className="text-xs">Start the conversation by sending a message below.</p>
+            </div>
+          )}
+        </div>
       {activeId && (
         <div className="relay-pb-safe">
           <Composer
@@ -1589,6 +1602,7 @@ export default function ChatPage() {
                       5 * 60 * 1000
                   }
                   onReaction={handleReaction}
+                  searchQuery={chatSearchQuery}
                 />
               ))
             ) : (
