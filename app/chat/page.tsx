@@ -351,9 +351,58 @@ function CopilotBriefPanel({
     setAiMessages((prev) => [...prev, { role: "user", text: aiInput }]);
     setAiInput("");
     setTimeout(() => {
-      setAiMessages((prev) => [...prev, { role: "assistant", text: `I received your message: "${aiInput}". How else can I assist you with Relay?` }]);
-    }, 600);
+      setAiMessages((prev) => [...prev, { role: "assistant", text: generateAiResponse(aiInput) }]);
+    }, 700);
   }, [aiInput]);
+
+  const generateAiResponse = useCallback((input: string): string => {
+    const lower = input.toLowerCase().trim();
+
+    if (lower.includes("joke") || lower.includes("funny") || lower.includes("comedy")) {
+      const jokes = [
+        "Why do developers prefer dark mode? Because light attracts bugs! 🐛",
+        "Why did the React component go to therapy? It had too many state issues. ⚛️",
+        "Why was the JavaScript developer sad? Because they didn't know how to 'null' their feelings. 😢",
+        "A SQL query walks into a bar, walks up to two tables and asks… 'Can I join you?' 🍺",
+        "Why do programmers always mix up Halloween and Christmas? Because Oct 31 == Dec 25! 🎃🎄",
+      ];
+      return jokes[Math.floor(Math.random() * jokes.length)];
+    }
+
+    if (lower.includes("hello") || lower.includes("hi ") || lower.includes("hey")) {
+      return "Hello there! 👋 I'm your Relay AI assistant. Ask me anything about messaging, workspace setup, or just tell me a joke!";
+    }
+
+    if (lower.includes("help") || lower.includes("assist")) {
+      return "I can help you summarize conversations, extract action items, draft replies, or just chat. What's on your mind?";
+    }
+
+    if (lower.includes("relay") || lower.includes("messenger") || lower.includes("workspace")) {
+      return "Relay Messenger Pro is a spatial glassmorphic workspace with real-time messaging, voice/video calls, stories, and AI-powered briefs. Built for teams that value privacy and OLED aesthetics. 🌙";
+    }
+
+    if (lower.includes("weather")) {
+      return "I can't check live weather yet, but I hope it's sunny wherever you are! ☀️ Want me to help with something else?";
+    }
+
+    if (lower.includes("thank") || lower.includes("thanks")) {
+      return "You're welcome! Happy to help anytime. 🙌";
+    }
+
+    if (lower.includes("bye") || lower.includes("goodbye")) {
+      return "Goodbye! I'll be here whenever you need me. Take care! 👋";
+    }
+
+    // Default smart response
+    const defaults = [
+      "That's an interesting point! Could you tell me more about it?",
+      "I'm not sure I have the answer to that, but I'd love to learn more. What else would you like to discuss?",
+      "Great question! Let me think about that... In the meantime, is there anything else I can help with?",
+      "I appreciate you sharing that. Would you like me to help summarize or extract action items from this conversation?",
+      "Hmm, that's a good one! I don't have a specific answer, but I'm here to chat about anything Relay-related.",
+    ];
+    return defaults[Math.floor(Math.random() * defaults.length)];
+  }, []);
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -605,41 +654,39 @@ function MoreOptionsMenu({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end">
-      <div className="w-56 bg-[#0a0a0c]/90 border border-white/10 rounded-2xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200">
-        {onClearChat && (
-          <button
-            onClick={() => { onClearChat(); onClose(); }}
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors"
-          >
-            <FileText className="h-4 w-4 text-slate-500 shrink-0" />
-            <span>Clear chat history</span>
-          </button>
-        )}
-        {onMute && (
-          <button
-            onClick={() => { onMute(); onClose(); }}
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors"
-          >
-            <Bell className="h-4 w-4 text-slate-500 shrink-0" />
-            <span>Mute notifications</span>
-          </button>
-        )}
+    <div className="absolute right-0 top-full mt-2 z-50 w-56 bg-[#0a0a0c]/90 border border-white/10 rounded-2xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200">
+      {onClearChat && (
         <button
-          onClick={() => { onLeaveGroup?.(); onClose(); }}
-          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-rose-400 hover:bg-rose-500/10 transition-colors"
-        >
-          <Lock className="h-4 w-4 text-slate-500 shrink-0" />
-          <span>Leave group</span>
-        </button>
-        <button
-          onClick={onClose}
+          onClick={() => { onClearChat(); onClose(); }}
           className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors"
         >
-          <X className="h-4 w-4 text-slate-500 shrink-0" />
-          <span>Cancel</span>
+          <FileText className="h-4 w-4 text-slate-500 shrink-0" />
+          <span>Clear chat history</span>
         </button>
-      </div>
+      )}
+      {onMute && (
+        <button
+          onClick={() => { onMute(); onClose(); }}
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors"
+        >
+          <Bell className="h-4 w-4 text-slate-500 shrink-0" />
+          <span>Mute notifications</span>
+        </button>
+      )}
+      <button
+        onClick={() => { onLeaveGroup?.(); onClose(); }}
+        className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-rose-400 hover:bg-rose-500/10 transition-colors"
+      >
+        <Lock className="h-4 w-4 text-slate-500 shrink-0" />
+        <span>Leave group</span>
+      </button>
+      <button
+        onClick={onClose}
+        className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors"
+      >
+        <X className="h-4 w-4 text-slate-500 shrink-0" />
+        <span>Cancel</span>
+      </button>
     </div>
   );
 }
@@ -1118,31 +1165,47 @@ export default function ChatPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button
-              ref={moreOptionsRef}
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMoreOptions((prev) => !prev);
-              }}
-              className="relative p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
-              aria-label="More options"
-            >
-              <MoreVertical className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => handleStartCall("audio")}
-              className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
-              aria-label="Start audio call"
-            >
-              <Phone className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => handleStartCall("video")}
-              className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
-              aria-label="Start video call"
-            >
-              <Video className="h-5 w-5" />
-            </button>
+            {activeConversation?.title !== "Relay Assistant" ? (
+              <>
+                <button
+                  ref={moreOptionsRef}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMoreOptions((prev) => !prev);
+                  }}
+                  className="relative inline-block p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+                  aria-label="More options"
+                >
+                  <MoreVertical className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => handleStartCall("audio")}
+                  className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+                  aria-label="Start audio call"
+                >
+                  <Phone className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => handleStartCall("video")}
+                  className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+                  aria-label="Start video call"
+                >
+                  <Video className="h-5 w-5" />
+                </button>
+              </>
+            ) : (
+              <button
+                ref={moreOptionsRef}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMoreOptions((prev) => !prev);
+                }}
+                className="relative inline-block p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+                aria-label="More options"
+              >
+                <MoreVertical className="h-5 w-5" />
+              </button>
+            )}
           </div>
         </header>
 
