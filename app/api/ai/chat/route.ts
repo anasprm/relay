@@ -2,27 +2,56 @@
  * AI Assistant route for Relay Messenger Pro.
  *
  * Production behavior:
- *   - When `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) is configured, the route
- *     proxies the prompt to Google's `gemini-1.5-flash` model via HTTP fetch
- *     so Relay AI can answer any general-knowledge, coding, math, or creative
- *     question live.
- *   - When `OPENAI_API_KEY` is configured (and no Gemini key), it proxies to
- *     OpenAI's Chat Completions API.
- *   - During local development or before an API key is provisioned, a smart
- *     local fallback keeps the assistant responsive without crashing.
+ *   - When a Google Gemini key is configured (`GEMINI_API_KEY`,
+ *     `GOOGLE_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, ...), the route proxies
+ *     the prompt to Gemini and returns a real, live answer. Model names are
+ *     tried newest-first because Google retires older model IDs; `GEMINI_MODEL`
+ *     can pin an explicit model.
+ *   - When `OPENAI_API_KEY` is configured (and Gemini is unavailable), it
+ *     proxies to OpenAI's Chat Completions API.
+ *   - Without any usable key (or if every provider call fails) a smart local
+ *     fallback keeps the assistant responsive instead of erroring out.
  *
- * Standardized output: { response: string, success: boolean }
+ * Diagnostics: `GET /api/ai/chat` reports whether a key is visible to the
+ * running deployment (never the secret itself). `GET /api/ai/chat?test=1`
+ * additionally performs a live round-trip so model/permission failures are
+ * returned as plain JSON instead of being hidden behind the fallback.
+ *
+ * Standardized output: { response: string, success: boolean, model: string }
  */
 
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const SYSTEM_PROMPT =
   "You are Relay AI, an intelligent, helpful, and concise AI assistant embedded " +
   "inside Relay Messenger. Answer general knowledge questions, coding requests, " +
   "summaries, and casual chat accurately and naturally. Keep replies short and " +
   "friendly unless the user asks for detail.";
+
+/** Environment variable names that can hold a Gemini key, in priority order. */
+const GEMINI_KEY_NAMES = [
+  "GEMINI_API_KEY",
+  "GOOGLE_API_KEY",
+  "GOOGLE_GENERATIVE_AI_API_KEY",
+  "GOOGLE_AI_API_KEY",
+  "NEXT_PUBLIC_GEMINI_API_KEY",
+];
+
+/**
+ * Model IDs tried in order. Google retires old models (1.5 was shut down), so
+ * we walk a list instead of hardcoding a single one.
+ */
+const GEMINI_MODELS = process.env.GEMINI_MODEL
+  ? [process.env.GEMINI_MODEL]
+  : [
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-flash-latest",
+      "gemini-1.5-flash",
+    ];
 
 function extractPrompt(body: unknown): string {
   if (!body || typeof body !== "object") return "";
@@ -78,18 +107,66 @@ function isPlaceholderKey(key: string | undefined): boolean {
   return (
     lower === "your_key_here" ||
     lower === "your-api-key" ||
+    lower === "your_key" ||
     lower === "add_your_key_here" ||
     lower === "sk-" ||
-    (lower.startsWith("your_") && lower.endsWith("_key"))
+    lower.length < 12 ||
+    (lower.startsWith("your_") && lower.endsWith("_key")) ||
+    (lower.startsWith("your_") && lower.endsWith("_here")) ||
+    lower.includes("placeholder") ||
+    lower.includes("<") ||
+    lower.includes("...")
   );
 }
 
-function looksLikeGeminiKey(key: string): boolean {
-  return key.startsWith("AIza");
+/**
+ * Read and sanitize a key from the environment.
+ * Handles copy/paste damage: surrounding quotes, whitespace, "Bearer " prefixes.
+ */
+function sanitizeKey(raw: string | undefined): string | null {
+  if (typeof raw !== "string") return null;
+  let value = raw.trim();
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'")) ||
+    (value.startsWith("`") && value.endsWith("`"))
+  ) {
+    value = value.slice(1, -1).trim();
+  }
+  if (value.toLowerCase().startsWith("bearer ")) {
+    value = value.slice(7).trim();
+  }
+  if (isPlaceholderKey(value)) return null;
+  return value;
 }
 
-function looksLikeOpenAIKey(key: string): boolean {
-  return key.startsWith("sk-");
+type KeyInfo = {
+  key: string;
+  source: string;
+  length: number;
+  prefix: string;
+  suffix: string;
+};
+
+function resolveGeminiKey(): KeyInfo | null {
+  for (const name of GEMINI_KEY_NAMES) {
+    const key = sanitizeKey(process.env[name]);
+    if (key) {
+      return {
+        key,
+        source: name,
+        length: key.length,
+        prefix: key.slice(0, 4),
+        suffix: key.slice(-2),
+      };
+    }
+  }
+  return null;
+}
+
+function resolveOpenAIKey(): { key: string; source: string } | null {
+  const key = sanitizeKey(process.env.OPENAI_API_KEY);
+  return key ? { key, source: "OPENAI_API_KEY" } : null;
 }
 
 function pick<T>(items: T[]): T {
@@ -101,7 +178,9 @@ function smartLocalReply(prompt: string): string {
 
   // Greetings — handle "hlo", "hi", "hello", "hey", etc.
   if (
-    lower.match(/^(hlo|hi|hello|hey|good morning|good afternoon|good evening|greetings|yo|sup)(\s|$|!|\.|,)/i)
+    lower.match(
+      /^(hlo|hlw|hi|hii+|hello|helo|hey+|good morning|good afternoon|good evening|greetings|yo|sup)(\s|$|!|\.|,)/i,
+    )
   ) {
     return pick(GREETINGS);
   }
@@ -135,7 +214,9 @@ function smartLocalReply(prompt: string): string {
   }
 
   // Help / capabilities
-  if (lower.match(/\b(help|assist|what can you do|capabilities|features|who are you)\b/i)) {
+  if (
+    lower.match(/\b(help|assist|what can you do|capabilities|features|who are you)\b/i)
+  ) {
     return HELP_TEXT;
   }
 
@@ -145,17 +226,25 @@ function smartLocalReply(prompt: string): string {
   }
 
   // Goodbye
-  if (lower.match(/\b(bye|goodbye|see you|farewell|take care|catch you later)\b/i)) {
+  if (
+    lower.match(/\b(bye|goodbye|see you|farewell|take care|catch you later)\b/i)
+  ) {
     return "Goodbye! I'll be here whenever you need me. Take care! 👋";
   }
 
   // Relay-specific
-  if (lower.match(/\b(relay|messenger|workspace|glassmorphic|spatial|glassmorphism)\b/i)) {
+  if (
+    lower.match(
+      /\b(relay|messenger|workspace|glassmorphic|spatial|glassmorphism)\b/i,
+    )
+  ) {
     return "Relay Messenger Pro is a secure, real-time glassmorphic workspace messaging app. It features direct threads, voice/video notes, secure calls, file attachments, 24-hour stories, AI-powered conversation briefs, and IndexedDB offline-first caching. How can I help you with it?";
   }
 
   // Weather
-  if (lower.match(/\b(weather|temperature|rain|snow|sunny|cloudy|forecast)\b/i)) {
+  if (
+    lower.match(/\b(weather|temperature|rain|snow|sunny|cloudy|forecast)\b/i)
+  ) {
     return "I don't have access to live weather data, but I hope it's beautiful wherever you are! ☀️ Is there something else I can help with?";
   }
 
@@ -172,59 +261,95 @@ function smartLocalReply(prompt: string): string {
   return `That's an interesting question about "${prompt}". I can help with coding help, conversation summaries, task extraction, general knowledge (with a Gemini API key), or casual chat. What would you like to explore?`;
 }
 
-async function callGemini(prompt: string): Promise<string | null> {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-  if (!apiKey || isPlaceholderKey(apiKey) || !looksLikeGeminiKey(apiKey)) {
-    return null;
+type GeminiResult =
+  | { ok: true; text: string; model: string }
+  | { ok: false; error: string; attempts: Array<{ model: string; status: number; error: string }> };
+
+async function callGemini(prompt: string): Promise<GeminiResult> {
+  const keyInfo = resolveGeminiKey();
+  if (!keyInfo) {
+    return {
+      ok: false,
+      error:
+        "No Gemini API key is visible to this deployment. Check Vercel → Settings → Environment Variables and redeploy.",
+      attempts: [],
+    };
   }
 
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: `${SYSTEM_PROMPT}\n\nUser: ${prompt}` }],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 1024,
+  const attempts: Array<{ model: string; status: number; error: string }> = [];
+  let lastError = "Gemini request failed.";
+
+  for (const model of GEMINI_MODELS) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": keyInfo.key,
           },
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      const errorBody = await response.text().catch(() => "");
-      process.stderr.write(
-        `[AI] Gemini returned ${response.status}: ${errorBody}\n`,
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: SYSTEM_PROMPT }],
+            },
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 1024,
+            },
+          }),
+        },
       );
-      return null;
-    }
 
-    const data = await response.json();
-    const aiReply =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "I'm sorry, I couldn't generate a response right now.";
-    return aiReply.trim();
-  } catch (geminiError) {
-    process.stderr.write(
-      `[AI] Gemini error: ${geminiError instanceof Error ? geminiError.message : String(geminiError)}\n`,
-    );
-    return null;
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => "");
+        const shortError = errorBody.slice(0, 300);
+        attempts.push({ model, status: response.status, error: shortError });
+        lastError = `Gemini ${model} returned ${response.status}`;
+        process.stderr.write(
+          `[AI] Gemini ${model} (key via ${keyInfo.source}) returned ${response.status}: ${shortError}\n`,
+        );
+        // A bad key won't get better on another model — stop early.
+        if (response.status === 400 || response.status === 401 || response.status === 403) {
+          if (/API_KEY_INVALID|API key not valid/i.test(errorBody)) break;
+        }
+        continue;
+      }
+
+      const data = await response.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts
+          ?.map((part: { text?: string }) => part?.text ?? "")
+          .join("")
+          .trim() || "";
+
+      if (!text) {
+        attempts.push({ model, status: 200, error: "Empty candidate text" });
+        continue;
+      }
+
+      return { ok: true, text, model };
+    } catch (geminiError) {
+      const message =
+        geminiError instanceof Error ? geminiError.message : String(geminiError);
+      attempts.push({ model, status: 0, error: message });
+      lastError = message;
+      process.stderr.write(`[AI] Gemini ${model} transport error: ${message}\n`);
+    }
   }
+
+  return { ok: false, error: lastError, attempts };
 }
 
-async function callOpenAI(prompt: string): Promise<string | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || isPlaceholderKey(apiKey) || !looksLikeOpenAIKey(apiKey)) {
-    return null;
+async function callOpenAI(
+  prompt: string,
+): Promise<{ ok: true; text: string; model: string } | { ok: false; error: string }> {
+  const keyInfo = resolveOpenAIKey();
+  if (!keyInfo) {
+    return { ok: false, error: "No OpenAI API key configured." };
   }
 
   try {
@@ -232,10 +357,10 @@ async function callOpenAI(prompt: string): Promise<string | null> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${keyInfo.key}`,
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: prompt },
@@ -248,18 +373,20 @@ async function callOpenAI(prompt: string): Promise<string | null> {
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
       process.stderr.write(
-        `[AI] OpenAI returned ${response.status}: ${errorBody}\n`,
+        `[AI] OpenAI returned ${response.status}: ${errorBody.slice(0, 300)}\n`,
       );
-      return null;
+      return { ok: false, error: `OpenAI returned ${response.status}` };
     }
 
     const data = await response.json();
-    return data?.choices?.[0]?.message?.content?.trim() || null;
+    const text: string = data?.choices?.[0]?.message?.content?.trim() || "";
+    if (!text) return { ok: false, error: "OpenAI returned an empty message." };
+    return { ok: true, text, model: "gpt-4o-mini" };
   } catch (openAIError) {
-    process.stderr.write(
-      `[AI] OpenAI error: ${openAIError instanceof Error ? openAIError.message : String(openAIError)}\n`,
-    );
-    return null;
+    const message =
+      openAIError instanceof Error ? openAIError.message : String(openAIError);
+    process.stderr.write(`[AI] OpenAI error: ${message}\n`);
+    return { ok: false, error: message };
   }
 }
 
@@ -278,28 +405,35 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Try Gemini first
-    let aiReply = await callGemini(prompt);
-    let usedModel: string | null = null;
-
-    // 2. Fall back to OpenAI if Gemini isn't configured or failed
-    if (!aiReply) {
-      aiReply = await callOpenAI(prompt);
-      if (aiReply) usedModel = "gpt-3.5-turbo";
+    const gemini = await callGemini(prompt);
+    if (gemini.ok) {
+      return NextResponse.json({
+        success: true,
+        response: gemini.text,
+        model: gemini.model,
+        provider: "google-gemini",
+        timestamp: new Date().toISOString(),
+      });
     }
 
-    // 3. Smart local fallback so Relay AI never goes silent
-    if (!aiReply) {
-      aiReply = smartLocalReply(prompt);
-      usedModel = "relay-ai-local-fallback";
-    } else if (!usedModel) {
-      usedModel = "gemini-1.5-flash";
+    const openai = await callOpenAI(prompt);
+    if (openai.ok) {
+      return NextResponse.json({
+        success: true,
+        response: openai.text,
+        model: openai.model,
+        provider: "openai",
+        timestamp: new Date().toISOString(),
+      });
     }
 
+    // Never go silent: local fallback always produces something useful.
     return NextResponse.json({
       success: true,
-      response: aiReply,
-      model: usedModel,
+      response: smartLocalReply(prompt),
+      model: "relay-ai-local-fallback",
+      provider: "local",
+      fallbackReason: gemini.error,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -311,4 +445,60 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+/**
+ * Diagnostics endpoint.
+ *   GET /api/ai/chat          → is a key visible to this deployment?
+ *   GET /api/ai/chat?test=1   → live-call every candidate model and report
+ *                               the real HTTP status/error per model.
+ *
+ * Secrets are never returned — only length, 4-char prefix and 2-char suffix.
+ */
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const liveTest = url.searchParams.get("test") === "1";
+
+  const keyInfo = resolveGeminiKey();
+  const openaiInfo = resolveOpenAIKey();
+
+  const envPresence = GEMINI_KEY_NAMES.reduce<Record<string, string>>(
+    (acc, name) => {
+      const raw = process.env[name];
+      acc[name] = raw ? `present (${raw.length} chars)` : "missing";
+      return acc;
+    },
+    {},
+  );
+
+  const diagnostics: Record<string, unknown> = {
+    success: true,
+    runtime: process.version,
+    vercelEnv: process.env.VERCEL_ENV ?? "local",
+    deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? null,
+    gemini: {
+      configured: Boolean(keyInfo),
+      keySource: keyInfo?.source ?? null,
+      keyLength: keyInfo?.length ?? 0,
+      keyPrefix: keyInfo?.prefix ?? null,
+      keySuffix: keyInfo?.suffix ?? null,
+      models: GEMINI_MODELS,
+    },
+    openai: {
+      configured: Boolean(openaiInfo),
+      keySource: openaiInfo?.source ?? null,
+    },
+    envPresence,
+  };
+
+  if (liveTest) {
+    const gemini = await callGemini("Reply with exactly: Relay is online.");
+    diagnostics.liveTest = gemini.ok
+      ? { ok: true, model: gemini.model, reply: gemini.text }
+      : { ok: false, error: gemini.error, attempts: gemini.attempts };
+  }
+
+  return NextResponse.json(diagnostics, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }
