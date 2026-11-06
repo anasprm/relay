@@ -40,6 +40,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { dbPutConversation, dbGetAllConversations } from '@/lib/db';
 import type { Conversation, Message, User } from '@/lib/types';
 
 /* ------------------------------------------------------------------ */
@@ -719,8 +720,36 @@ export default function ChatPage() {
       router.replace('/login');
       return;
     }
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       if (conversations.length === 0) {
+        // Try to hydrate from IndexedDB first (persists across reloads)
+        try {
+          const stored = await dbGetAllConversations();
+          if (stored && stored.length > 0) {
+            setConversations(
+              stored.map((c) => ({
+                id: c.conversationId,
+                conversationId: c.conversationId,
+                title: c.title,
+                kind: c.kind,
+                participantIds: c.participantIds,
+                other: null,
+                participantCount: c.participantIds.length,
+                lastMessage: null,
+                unreadCount: 0,
+                modes: { anonymity: false, vanish: false },
+                locked: false,
+                createdAt: c.updatedAt,
+                updatedAt: c.updatedAt,
+                messageCount: 0,
+              })),
+            );
+            setActiveId(stored[0].conversationId);
+            return;
+          }
+        } catch {
+          // IndexedDB not available or empty — fall through to MOCK seed
+        }
         setConversations(MOCK_CONVERSATIONS);
         setActiveId(MOCK_CONVERSATIONS[0].id);
         setMessages(MOCK_MESSAGES);
@@ -763,6 +792,27 @@ export default function ChatPage() {
   const toggleCopilot = useCallback(() => setCopilotOpen((p) => !p), []);
 
   const handleSelectConversation = useCallback((conv: Conversation) => {
+    // Clear unread count for the selected conversation in local state
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === conv.id
+          ? { ...c, unreadCount: 0 }
+          : c,
+      ),
+    );
+
+    // Persist read state to IndexedDB
+    if (typeof window !== 'undefined') {
+      dbPutConversation({
+        conversationId: conv.id,
+        title: conv.title,
+        kind: conv.kind,
+        participantIds: conv.participantIds,
+        lastMessageId: conv.lastMessage?.id || null,
+        updatedAt: conv.updatedAt,
+      }).catch((err) => console.error('[db] Failed to persist read state:', err));
+    }
+
     setActiveId(conv.id);
     if (conv.id === 'conv_general_community') {
       setMessages(MOCK_MESSAGES);
