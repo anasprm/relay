@@ -112,7 +112,7 @@ export function cacheConversations(
 ) {
   return getDb().then((db) =>
     Promise.all(
-      conversations.map((c) =>
+      (conversations || []).map((c) =>
         db.put('conversations', {
           ...c,
           updatedAt: new Date().toISOString(),
@@ -201,7 +201,7 @@ export function cacheMessages(
 ) {
   return getDb().then((db) =>
     Promise.all(
-      messages.map((m) =>
+      (messages || []).map((m) =>
         db.put('messages', {
           ...m,
           createdAt: new Date(m.createdAt).toISOString(),
@@ -344,7 +344,7 @@ export function bootstrapCache(
 ) {
   return Promise.all([
     cacheConversations(
-      conversations.map((c) => ({
+      (conversations || []).map((c) => ({
         conversationId: c.conversationId,
         title: c.title,
         kind: c.kind,
@@ -354,14 +354,14 @@ export function bootstrapCache(
       }))
     ),
     // Cache per-conversation messages (newest-first on server, stored newest-first)
-    ...(conversations.map((c) =>
+    ...((conversations || []).map((c) =>
       c.messages
         ? cacheMessages(c.conversationId, c.messages)
         : Promise.resolve()
     )),
     // Cache contacts that appear in any participant list
-    ...(conversations.flatMap((c) =>
-      c.participantIds.map((pid) => {
+    ...((conversations || []).flatMap((c) =>
+      (c.participantIds || []).map((pid) => {
         // We don't have full user records here; the server will stream them.
         // This is a no-op placeholder for future expansion.
         return Promise.resolve();

@@ -192,7 +192,7 @@ function seedDemoUsers(store: StoreFile): void {
   for (const demo of DEMO_USERS) {
     const canonicalEmail = demo.email?.toLowerCase() ?? null;
     const demoIdentifiers = new Set(
-      [canonicalEmail, ...demo.aliases.map((alias) => alias.toLowerCase())].filter(
+      [canonicalEmail, ...(demo.aliases || []).map((alias) => alias.toLowerCase())].filter(
         (value): value is string => Boolean(value),
       ),
     );
@@ -210,7 +210,7 @@ function seedDemoUsers(store: StoreFile): void {
     }
 
     const aliases = new Set(
-      existing.aliases.map((alias) => alias.toLowerCase()),
+      (existing.aliases || []).map((alias) => alias.toLowerCase()),
     );
     for (const alias of demo.aliases) aliases.add(alias.toLowerCase());
     if (canonicalEmail) aliases.add(canonicalEmail);

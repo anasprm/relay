@@ -331,7 +331,7 @@ export function StoryViewer({
       >
         {/* Segmented progress bars */}
         <div className="absolute inset-x-0 top-0 z-30 flex gap-1 px-2 pt-2">
-          {group.stories.map((entry, index) => (
+          {(group.stories || []).map((entry, index) => (
             <span key={entry.id} className="h-[2.5px] flex-1 overflow-hidden rounded-full bg-white/30">
               <span
                 className="block h-full rounded-full bg-white transition-[width] duration-100 ease-linear"

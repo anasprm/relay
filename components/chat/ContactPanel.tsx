@@ -181,7 +181,7 @@ export function ContactPanel({
 
   const attachments = useMemo(
     () =>
-      messages
+      (messages || [])
         .filter((message): message is Message & { attachment: Attachment } => !!message.attachment)
         .map((message) => message.attachment),
     [messages],
@@ -287,7 +287,7 @@ export function ContactPanel({
             </h4>
 
             <div className="space-y-0.5">
-              {conversation.participants.map((member) => {
+              {(conversation.participants || []).map((member) => {
                 const isMe = member.id === meId;
                 const removable = isCreator && !isMe;
                 return (

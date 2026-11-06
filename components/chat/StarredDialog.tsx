@@ -103,7 +103,7 @@ export function StarredDialog({ open, onClose, onJump }: StarredDialogProps) {
           </div>
         ) : (
           <ul className="max-h-[58dvh] space-y-1 overflow-y-auto">
-            {entries.map((entry) => (
+            {(entries || []).map((entry) => (
               <li key={entry.message.id} className="flex items-start gap-2 rounded-lg border border-line bg-panel-2/60 p-3">
                 <button
                   type="button"

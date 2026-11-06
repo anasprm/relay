@@ -102,7 +102,7 @@ export async function fetchConversationThreads(
   const { highlights, topics } = data.brief || {};
 
   // Convert server-side topics into client-side threads
-  const threads: ChatThread[] = topics.map((topic: string, i: number) => ({
+  const threads: ChatThread[] = (topics || []).map((topic: string, i: number) => ({
     topic: {
       id: `topic-${i}`,
       title: topic,

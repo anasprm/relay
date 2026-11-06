@@ -249,11 +249,11 @@ export function VoiceRecorder({
           {transcript || 'Listening…'}
         </div>
       )}
-      {chapters.length > 0 && (
+      {(chapters || []).length > 0 && (
         <div className="mt-2 text-[10px] text-primary/60">
           <div className="text-[10px] font-medium mb-1">Chapters:</div>
           <div className="flex flex-wrap gap-1">
-            {chapters.map((c, i) => (
+            {(chapters || []).map((c, i) => (
               <button
                 key={i}
                 onClick={() => {

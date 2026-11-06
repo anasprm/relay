@@ -451,7 +451,7 @@ export function StoryComposer({
                     </p>
                   ) : (
                     <ul className="space-y-0.5 pb-1">
-                      {contacts.map((contact) => {
+                      {(contacts || []).map((contact) => {
                         const selected = selectedFriends.has(contact.id);
                         return (
                           <li key={contact.id}>

@@ -175,7 +175,7 @@ export function processWordleGuess(
 
 /** Format Wordle hint for display */
 function formatWordleHint(correctPositions: number[][]): string {
-  const symbols = correctPositions.map(([pos, result]) => {
+  const symbols = (correctPositions || []).map(([pos, result]) => {
     if (result === 1) return '🟩'; // Correct position
     if (result === 0) return '🟨'; // Letter in word, wrong position
     return '⬛'; // Letter not in word
@@ -287,7 +287,7 @@ export function processTicTacToeMove(
   game: TicTacToeGame,
   position: number // 0-8 for the board
 ): { newGame: TicTacToeGame; winner: string | null; status: 'active' | 'win' | 'draw' } {
-  const board = game.board.map(row => [...row]); // Deep copy
+  const board = (game.board || []).map(row => [...row]); // Deep copy
   const player = game.currentPlayer;
   const mark = player === game.player1Id ? 'X' : 'O';
   

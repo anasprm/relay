@@ -248,7 +248,7 @@ export function GroupCallOverlay({
           </div>
         ) : (
           <div className={cn('grid h-full w-full max-w-6xl auto-rows-fr gap-3 overflow-y-auto', gridClass)}>
-            {call.peers.map((peer) => (
+            {(call.peers || []).map((peer) => (
               <PeerTile
                 key={peer.id}
                 peer={peer}

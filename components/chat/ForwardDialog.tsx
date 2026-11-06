@@ -101,7 +101,7 @@ export function ForwardDialog({
               No conversations match.
             </p>
           ) : (
-            filtered.map((conversation) => {
+            (filtered || []).map((conversation) => {
               const group = isGroupConversation(conversation);
               const busy = busyId === conversation.id;
               return (

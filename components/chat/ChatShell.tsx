@@ -161,14 +161,14 @@ export function ChatShell() {
           setCacheState('synching');
         } else {
           const resp = await api.get<{ conversations: Conversation[] }>('/api/conversations');
-          setConversations(resp.data.conversations);
+          setConversations(resp.data.conversations || []);
           setCacheState('synching');
         }
       } catch (e) {
         console.error('[ChatShell] Bootstrap failed:', e);
         try {
           const resp = await api.get<{ conversations: Conversation[] }>('/api/conversations');
-          setConversations(resp.data.conversations);
+          setConversations(resp.data.conversations || []);
         } catch (fe) {
           setMessageError(fe instanceof Error ? fe.message : 'Failed to load conversations');
         }
@@ -195,7 +195,7 @@ export function ChatShell() {
         );
         if (hasChanges) {
           await cacheConversations(
-            fresh.map((f: any) => ({
+            (fresh || []).map((f: any) => ({
               conversationId: f.id,
               title: f.title,
               kind: f.kind,
@@ -205,7 +205,7 @@ export function ChatShell() {
             }))
           );
           setConversations(
-            fresh.map((f: any) => mapServerConversation(f))
+            (fresh || []).map((f: any) => mapServerConversation(f))
           );
         }
       } catch (e) {

@@ -86,7 +86,7 @@ export function ChatFilters({ filter, setFilter }: { filter: string; setFilter: 
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-2 py-1 rounded-md bg-border/20 text-[10px] font-medium text-foreground/60">
-      {filters.map(({ key, label, count }) => (
+      {(filters || []).map(({ key, label, count }) => (
         <button
           key={key}
           onClick={() => applyFilter(key)}

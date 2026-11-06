@@ -161,7 +161,7 @@ export function MessageList({
         const resp = await api.get(
           `/api/conversations/${conversationId}/messages?limit=200`,
         );
-        setMessages(resp.data.messages);
+        setMessages(resp.data.messages || []);
         setLoading(false);
       } catch (e) {
         console.error('[MessageList] Load error:', e);

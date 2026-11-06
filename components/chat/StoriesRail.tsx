@@ -86,7 +86,7 @@ export function StoriesRail({
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {groups.map((group, idx) => {
+      {(groups || []).map((group, idx) => {
         if (group.user?.id === me) return null;
         const unviewed = (group.stories || []).some((s) => !s.viewed);
         if (!unviewed) return null;
