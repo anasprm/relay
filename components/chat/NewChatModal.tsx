@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -12,6 +11,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Portal } from './Portal';
 import { api } from '@/lib/api';
 import { errorMessage } from '@/lib/AuthProvider';
+import { findExistingOneOnOneChat } from '@/lib/chatHelpers';
 import { cn } from '@/lib/utils';
 import type { Conversation, User } from '@/lib/types';
 
@@ -119,18 +119,6 @@ export function NewChatModal({
   const buttonLabel = isDirect ? 'Chat' : 'Create Group';
   const canProceed = selected.length > 0 && !busy;
 
-  // Deduplication: check if a direct conversation already exists with the selected contact
-  const existingDirectConversation = useMemo(() => {
-    if (!isDirect || !selected[0]) return null;
-    const contactId = selected[0].id;
-    return (conversations || []).find(
-      (c) =>
-        c.kind === 'direct' &&
-        c.participantIds.includes(currentUserId || '') &&
-        c.participantIds.includes(contactId),
-    );
-  }, [conversations, currentUserId, selected, isDirect]);
-
   async function handleSubmit() {
     if (!canProceed) return;
 
@@ -139,29 +127,46 @@ export function NewChatModal({
 
     try {
       if (isDirect && selected[0]) {
-        // Check for existing direct conversation first
-        const existing = existingDirectConversation;
+        // ------------------------------------------------------------------
+        // Phase A: Client-side memory check (0ms latency).
+        // Look up an existing direct thread in local state before hitting
+        // the server. If found, select it immediately and close the modal.
+        // ------------------------------------------------------------------
+        const existing = findExistingOneOnOneChat(
+          conversations,
+          currentUserId || '',
+          selected[0].id,
+        );
         if (existing) {
           onSelectConversation(existing.id);
           onClose();
           return;
         }
 
-        // Create new direct conversation
-        const response = await api.post<{ conversationId: string }>('/api/conversations', {
-          type: 'direct',
-          participantIds: [selected[0].id],
-        });
+        // ------------------------------------------------------------------
+        // Phase B: Server-side fallback. No local thread found, so create
+        // a new direct conversation via the API.
+        // ------------------------------------------------------------------
+        const response = await api.post<{ conversationId: string }>(
+          '/api/conversations',
+          {
+            type: 'direct',
+            participantIds: [selected[0].id],
+          },
+        );
         const convId = response.conversationId;
         onSelectConversation(convId);
         onClose();
       } else {
-        // Create group conversation
-        const response = await api.post<{ conversationId: string }>('/api/conversations', {
-          type: 'group',
-          title: groupName.trim() || 'Group chat',
-          participantIds: selected.map((m) => m.id),
-        });
+        // Create group conversation (no dedup needed for groups)
+        const response = await api.post<{ conversationId: string }>(
+          '/api/conversations',
+          {
+            type: 'group',
+            title: groupName.trim() || 'Group chat',
+            participantIds: selected.map((m) => m.id),
+          },
+        );
         const convId = response.conversationId;
         onSelectConversation(convId);
         onClose();
