@@ -15,6 +15,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Portal } from '@/components/chat/Portal';
 import { MoreOptionsMenu } from '@/components/chat/MoreOptionsMenu';
 import { CopilotPanel } from '@/components/chat/CopilotPanel';
+import { ChatComposer } from '@/components/chat/ChatComposer';
 import {
   ArrowRight,
   CheckCheck,
@@ -1333,7 +1334,7 @@ export default function ChatPage() {
         </div>
       {activeId && (
         <div className="relay-pb-safe">
-          <Composer
+          <ChatComposer
             disabled={!activeId}
             draft={draft}
             setDraft={setDraft}
@@ -1624,7 +1625,7 @@ export default function ChatPage() {
           </div>
         )}
       </div>
-      <Composer
+      <ChatComposer
         disabled={!activeId}
         draft={draft}
         setDraft={setDraft}

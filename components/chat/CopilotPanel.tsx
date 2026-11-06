@@ -8,13 +8,13 @@ import React, {
 } from 'react';
 import {
   Copy,
-  Send,
   ShieldCheck,
   Sparkles,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Conversation, Message } from '@/lib/types';
+import { ChatInputBar } from './ChatInputBar';
 
 const SYSTEM_WELCOME =
   "Hello! I'm your Relay AI assistant. How can I help you today?";
@@ -432,34 +432,7 @@ export function CopilotPanel({
 
       {/* Composer — pinned at bottom with safe area */}
       <div className="shrink-0 border-t border-[#2A2A2C] bg-[#0A0A0C] p-2 relay-pb-safe">
-        <div className="flex items-end gap-2">
-          <input
-            type="text"
-            value={aiInput}
-            onChange={(e) => setAiInput(e.target.value)}
-            placeholder="Ask Relay AI anything…"
-            className="flex-1 bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl px-3 py-2 text-sm text-[#FFFFFF] placeholder-[#8E8E93] focus:outline-none focus:border-[#25D366] transition-all"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleAiSend();
-              }
-            }}
-          />
-          <button
-            onClick={handleAiSend}
-            disabled={!aiInput.trim() || loading}
-            className={cn(
-              'p-2 rounded-xl text-[#FFFFFF] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed',
-              aiInput.trim() && !loading
-                ? 'bg-[#25D366] hover:bg-[#1E9E52] active:scale-[0.97]'
-                : 'bg-[#1C1C1E] border border-[#2A2A2C] text-[#8E8E93]',
-            )}
-            aria-label="Send AI message"
-          >
-            <Send className="h-4 w-4" />
-          </button>
-        </div>
+        <ChatInputBar />
       </div>
 
       <div className="shrink-0 px-4 py-2">
