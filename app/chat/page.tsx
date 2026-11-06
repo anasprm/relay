@@ -26,6 +26,7 @@ import {
   Paperclip,
   Phone,
   Play,
+  Plus,
   Search,
   Send,
   Smile,
@@ -403,8 +404,7 @@ function MessageBubble({
               isMe ? 'flex-row-reverse' : 'flex-row',
             )}
           >
-            {message.reactions &&
-              Object.entries(message.reactions).map(([emoji, count]) => (
+            {Object.entries(message.reactions || {}).map(([emoji, count]) => (
                 <button
                   key={emoji}
                   type="button"
@@ -581,6 +581,14 @@ export function Composer({
         </label>
         <button
           type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="p-2 rounded-xl text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]"
+          aria-label="Attach file"
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
           onClick={onToggleEmoji}
           className={cn(
             'p-2 rounded-xl text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] relative',
@@ -722,7 +730,9 @@ export default function ChatPage() {
   }, [loading, user, token, router, conversations.length]);
 
   const activeConversation = conversations.find((c) => c.id === activeId);
-  const visibleMessages = messages.filter((m) => m.conversationId === activeId);
+  const visibleMessages = (messages || []).filter(
+    (m) => m.conversationId === activeId,
+  );
 
   const filteredConversations = useMemo(() => {
     const needle = searchQuery.toLowerCase();
@@ -754,7 +764,31 @@ export default function ChatPage() {
 
   const handleSelectConversation = useCallback((conv: Conversation) => {
     setActiveId(conv.id);
-    setMessages(conv.id === 'conv_general_community' ? MOCK_MESSAGES : []);
+    if (conv.id === 'conv_general_community') {
+      setMessages(MOCK_MESSAGES);
+    } else if (conv.id === 'conv_relay_assistant') {
+      setMessages([
+        {
+          id: 'msg_ai_welcome',
+          conversationId: 'conv_relay_assistant',
+          senderId: 'usr_ai',
+          sender: MOCK_CONVERSATIONS[0].other!,
+          kind: 'text',
+          text: "Hi Alex! How can I help you with Relay Messenger Pro today?",
+          attachment: null,
+          anonymous: false,
+          ephemeral: false,
+          viewOnce: false,
+          viewOnceOpened: false,
+          reactions: {},
+          readBy: ['usr_me'],
+          starred: false,
+          createdAt: new Date(Date.now() - 300000).toISOString(),
+        },
+      ]);
+    } else {
+      setMessages([]);
+    }
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setMobileView('CHAT');
     }
@@ -767,9 +801,114 @@ export default function ChatPage() {
     toast('Start a new conversation by entering a username or email', 'info');
   }, [toast]);
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     const text = draft.trim();
     if (!text && !pendingAttachment) return;
+
+    const isAI = activeId === 'conv_relay_assistant';
+
+    if (isAI) {
+      // Append user message immediately (optimistic)
+      const userMessage: Message = {
+        id: `msg_${Date.now()}`,
+        conversationId: activeId || 'conv_relay_assistant',
+        senderId: 'usr_me',
+        sender: MOCK_USER,
+        kind: 'text',
+        text,
+        attachment: null,
+        anonymous: false,
+        ephemeral: false,
+        viewOnce: false,
+        viewOnceOpened: false,
+        reactions: {},
+        readBy: ['usr_me'],
+        starred: false,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+      setDraft('');
+      setPendingAttachment(null);
+      setEmojiOpen(false);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === (activeId || 'conv_relay_assistant')
+            ? {
+                ...c,
+                lastMessage: userMessage,
+                unreadCount: 0,
+                updatedAt: new Date().toISOString(),
+              }
+            : c,
+        ),
+      );
+
+      // Call live Gemini API
+      try {
+        const res = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text }),
+        });
+        const data = await res.json();
+        const aiReply =
+          data?.response || "I'm having trouble responding right now.";
+        const aiSender = MOCK_CONVERSATIONS[0].other!;
+        const aiMessage: Message = {
+          id: `msg_${Date.now() + 1}`,
+          conversationId: 'conv_relay_assistant',
+          senderId: 'usr_ai',
+          sender: aiSender,
+          kind: 'text',
+          text: aiReply,
+          attachment: null,
+          anonymous: false,
+          ephemeral: false,
+          viewOnce: false,
+          viewOnceOpened: false,
+          reactions: {},
+          readBy: [],
+          starred: false,
+          createdAt: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === 'conv_relay_assistant'
+              ? {
+                  ...c,
+                  lastMessage: aiMessage,
+                  unreadCount: 0,
+                  updatedAt: new Date().toISOString(),
+                }
+              : c,
+          ),
+        );
+      } catch {
+        const aiSender = MOCK_CONVERSATIONS[0].other!;
+        const aiMessage: Message = {
+          id: `msg_${Date.now() + 1}`,
+          conversationId: 'conv_relay_assistant',
+          senderId: 'usr_ai',
+          sender: aiSender,
+          kind: 'text',
+          text: "I'm having trouble responding right now. Please try again.",
+          attachment: null,
+          anonymous: false,
+          ephemeral: false,
+          viewOnce: false,
+          viewOnceOpened: false,
+          reactions: {},
+          readBy: [],
+          starred: false,
+          createdAt: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+      }
+      return;
+    }
+
+    // Non-AI conversation: mock store
     const newMessage: Message = {
       id: `msg_${Date.now()}`,
       conversationId: activeId || 'conv_general_community',
@@ -1110,12 +1249,16 @@ export default function ChatPage() {
           ))
         )}
       </div>
-      <div className="p-3 border-t border-[#2A2A2C]">
+      <div className="flex items-center justify-between p-3 bg-[#0A0A0C] border-t border-[#1C1C1E]">
         {user ? (
-          <div className="flex items-center gap-2 cursor-pointer hover:bg-[#2A2A2C] rounded-xl p-2 transition-colors">
-            <Avatar user={user} size={32} />
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 shrink-0 flex items-center justify-center">
+              <Avatar user={user} size="xs" className="w-9 h-9" />
+            </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm text-[#FFFFFF] truncate">{user.displayName}</h3>
+              <h3 className="font-medium text-sm text-[#FFFFFF] truncate">
+                {user.displayName}
+              </h3>
               <p className="text-xs text-[#8E8E93] truncate">{user.username}</p>
             </div>
             <MoreVertical className="h-4 w-4 text-[#8E8E93]" />
