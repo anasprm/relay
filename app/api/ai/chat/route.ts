@@ -72,6 +72,26 @@ const HELP_TEXT =
   "• Extracting action items and tasks from chat\n" +
   "• Casual conversation and jokes\n\nJust ask!";
 
+function isPlaceholderKey(key: string | undefined): boolean {
+  if (!key) return true;
+  const lower = key.toLowerCase().trim();
+  return (
+    lower === "your_key_here" ||
+    lower === "your-api-key" ||
+    lower === "add_your_key_here" ||
+    lower === "sk-" ||
+    (lower.startsWith("your_") && lower.endsWith("_key"))
+  );
+}
+
+function looksLikeGeminiKey(key: string): boolean {
+  return key.startsWith("AIza");
+}
+
+function looksLikeOpenAIKey(key: string): boolean {
+  return key.startsWith("sk-");
+}
+
 function pick<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
@@ -154,7 +174,9 @@ function smartLocalReply(prompt: string): string {
 
 async function callGemini(prompt: string): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey || isPlaceholderKey(apiKey) || !looksLikeGeminiKey(apiKey)) {
+    return null;
+  }
 
   try {
     const response = await fetch(
@@ -201,7 +223,9 @@ async function callGemini(prompt: string): Promise<string | null> {
 
 async function callOpenAI(prompt: string): Promise<string | null> {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey || isPlaceholderKey(apiKey) || !looksLikeOpenAIKey(apiKey)) {
+    return null;
+  }
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -256,25 +280,26 @@ export async function POST(request: Request) {
 
     // 1. Try Gemini first
     let aiReply = await callGemini(prompt);
+    let usedModel: string | null = null;
 
     // 2. Fall back to OpenAI if Gemini isn't configured or failed
     if (!aiReply) {
       aiReply = await callOpenAI(prompt);
+      if (aiReply) usedModel = "gpt-3.5-turbo";
     }
 
     // 3. Smart local fallback so Relay AI never goes silent
     if (!aiReply) {
       aiReply = smartLocalReply(prompt);
+      usedModel = "relay-ai-local-fallback";
+    } else if (!usedModel) {
+      usedModel = "gemini-1.5-flash";
     }
 
     return NextResponse.json({
       success: true,
       response: aiReply,
-      model: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
-        ? "gemini-1.5-flash"
-        : process.env.OPENAI_API_KEY
-          ? "gpt-3.5-turbo"
-          : "relay-ai-local-fallback",
+      model: usedModel,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
