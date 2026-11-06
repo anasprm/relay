@@ -22,13 +22,14 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!identifier) {
+    const cleanedIdentifier = identifier.trim();
+    if (!cleanedIdentifier) {
       showToast("Please enter your username or email", "error");
       return;
     }
     setLoading(true);
     try {
-      await login(identifier, password);
+      await login(cleanedIdentifier, password);
       showToast("Welcome back to Relay", "success");
       router.push("/chat");
     } catch (err: any) {

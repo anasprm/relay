@@ -190,15 +190,52 @@ function persist(store: StoreFile): void {
 
 function seedDemoUsers(store: StoreFile): void {
   for (const demo of DEMO_USERS) {
-    const exists = store.users.some(
+    const canonicalEmail = demo.email?.toLowerCase() ?? null;
+    const demoIdentifiers = new Set(
+      [canonicalEmail, ...demo.aliases.map((alias) => alias.toLowerCase())].filter(
+        (value): value is string => Boolean(value),
+      ),
+    );
+
+    const existing = store.users.find(
       (user) =>
         user.id === demo.id ||
         user.username.toLowerCase() === demo.username.toLowerCase() ||
-        user.email?.toLowerCase() === demo.email?.toLowerCase(),
+        user.email?.toLowerCase() === canonicalEmail,
     );
-    if (!exists) {
+
+    if (!existing) {
       store.users.push({ ...demo, aliases: [...demo.aliases] });
+      continue;
     }
+
+    const aliases = new Set(
+      existing.aliases.map((alias) => alias.toLowerCase()),
+    );
+    for (const alias of demo.aliases) aliases.add(alias.toLowerCase());
+    if (canonicalEmail) aliases.add(canonicalEmail);
+
+    const existingEmail = existing.email?.toLowerCase() ?? null;
+    const looksLikeSeededDemo =
+      existing.id === demo.id ||
+      (existingEmail ? demoIdentifiers.has(existingEmail) : false);
+
+    // Older stores may have the demo account under a retired email. Keep that
+    // address usable as an alias, but move the primary email to the current one
+    // so password-reset emails reach the right inbox.
+    if (
+      looksLikeSeededDemo &&
+      canonicalEmail &&
+      existingEmail &&
+      existingEmail !== canonicalEmail
+    ) {
+      aliases.add(existingEmail);
+      existing.email = demo.email;
+    } else if (!existing.email && demo.email) {
+      existing.email = demo.email;
+    }
+
+    existing.aliases = [...aliases];
   }
 }
 
@@ -249,6 +286,17 @@ export function findUserByIdentifier(identifier: string): StoredUser | null {
       return user.aliases.some((alias) => alias.toLowerCase() === value);
     }) ?? null
   );
+}
+
+/**
+ * Explicit lookup used by the login route. The name documents that the value
+ * may be either a username or an email; the async signature leaves room for a
+ * real database driver later without changing the route.
+ */
+export async function findUserByIdentifierOrEmail(
+  identifier: string,
+): Promise<StoredUser | null> {
+  return findUserByIdentifier(identifier);
 }
 
 export function findUserById(id: string): StoredUser | null {
