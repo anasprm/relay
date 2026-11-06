@@ -30,6 +30,7 @@ import {
   Send,
   ShieldCheck,
   Smile,
+  Sparkles,
   UserRound,
   Users,
   Video,
@@ -388,11 +389,13 @@ function CopilotBriefPanel({
   messages,
   onSummarize,
   onExtractTasks,
+  onClose,
 }: {
   activeConversation: Conversation | null;
   messages: Message[];
   onSummarize?: () => void;
   onExtractTasks?: () => void;
+  onClose?: () => void;
 }) {
   const [summary, setSummary] = useState<string | null>(null);
   const [tasks, setTasks] = useState<string[]>([]);
@@ -472,7 +475,7 @@ function CopilotBriefPanel({
   }, [aiInput]);
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#0A0A0C] md:w-[360px] md:shrink-0">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#0A0A0C] xl:border-l xl:border-[#2A2A2C]">
       <div className="flex h-16 shrink-0 items-center justify-between border-b border-[#2A2A2C] bg-[#0A0A0C]/30 px-4">
         <div className="flex items-center gap-2">
           <div className="h-6 w-6 rounded-full bg-gradient-to-r from-[#25D366] to-[#1E9E52] flex items-center justify-center text-white text-[10px] font-bold">
@@ -480,7 +483,11 @@ function CopilotBriefPanel({
           </div>
           <span className="font-semibold text-sm text-white">Relay AI</span>
         </div>
-        <button className="p-1.5 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors" aria-label="Close">
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors"
+          aria-label="Close AI copilot"
+        >
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -878,6 +885,8 @@ export default function ChatPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread" | "favorites" | "groups">("all");
   const [activeMobileView, setActiveMobileView] = useState<"LIST" | "CHAT" | "COPILOT">("LIST");
+  const [showCopilot, setShowCopilot] = useState(true);
+  const [copilotDrawer, setCopilotDrawer] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
@@ -1041,8 +1050,8 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="h-screen bg-[#0A0A0C] text-[#FFFFFF] overflow-hidden">
-      <div className="md:hidden flex h-screen flex-col">
+    <div className="h-[100dvh] bg-[#0A0A0C] text-[#FFFFFF] overflow-hidden">
+      <div className="md:hidden flex h-[100dvh] flex-col">
         {activeMobileView === "LIST" && (
           <>
             <header className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-4 z-20">
@@ -1081,7 +1090,7 @@ export default function ChatPage() {
                 )}
               </div>
             </header>
-            <div className="flex-1 overflow-y-auto px-2 space-y-1">
+            <div className="relative flex-1 overflow-y-auto px-2 space-y-1 md:pb-0">
               {filteredConversations.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center text-[#8E8E93]">
                   <MessageSquarePlus className="h-10 w-10 mb-2 opacity-30" />
@@ -1145,6 +1154,15 @@ export default function ChatPage() {
                     </button>
                   );
                 })
+              )}
+              {activeId == null && (
+                <button
+                  onClick={handleNewChat}
+                  className="fixed bottom-10 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-[#FFFFFF] shadow-[0_8px_24px_rgba(37,211,102,0.35)] hover:bg-[#1E9E52] transition-all md:hidden"
+                  aria-label="New conversation"
+                >
+                  <MessageSquarePlus className="h-6 w-6" />
+                </button>
               )}
             </div>
           </>
@@ -1289,10 +1307,11 @@ export default function ChatPage() {
             messages={visibleMessages}
             onSummarize={() => {}}
             onExtractTasks={() => {}}
+            onClose={() => setActiveMobileView("CHAT")}
           />
         )}
         {activeMobileView === "LIST" && (
-          <div className="h-16 border-t border-[#2A2A2C] bg-[#0A0A0C] px-4 flex items-center justify-around z-20">
+          <div className="h-16 border-t border-[#2A2A2C] bg-[#0A0A0C] px-3 flex items-center justify-around z-20 md:hidden">
             <button
               onClick={() => {}}
               className="flex flex-col items-center gap-1 text-[#25D366]"
@@ -1318,7 +1337,7 @@ export default function ChatPage() {
               <span className="text-[10px]">Communities</span>
             </button>
             <button
-              onClick={() => setActiveMobileView("CHAT")}
+              onClick={() => {}}
               className="flex flex-col items-center gap-1 text-[#8E8E93] hover:text-[#FFFFFF] transition-colors"
               aria-label="Calls"
             >
@@ -1329,8 +1348,8 @@ export default function ChatPage() {
         )}
       </div>
 
-      <div className="md:flex hidden h-screen">
-        <aside className="flex flex-col w-80 bg-[#0F0F11] border-r border-[#2A2A2C] transition-all duration-300" aria-label="Conversations sidebar">
+      <div className="relative md:flex hidden h-[100dvh]">
+        <aside className="flex w-72 shrink-0 flex-col bg-[#0F0F11] border-r border-[#2A2A2C] transition-all duration-300 lg:w-80 xl:w-[340px]" aria-label="Conversations sidebar">
           <div className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-4">
             <div className="flex items-center gap-2">
               <Logo className="h-8 w-8 text-[#25D366]" compact />
@@ -1432,8 +1451,8 @@ export default function ChatPage() {
           </div>
         </aside>
         <main className="flex-1 flex flex-col min-w-0 bg-[#0A0A0C]">
-          <header className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-6">
-            <div className="flex items-center gap-3">
+          <header className="flex h-16 shrink-0 items-center justify-between gap-2 bg-[#0A0A0C] border-b border-[#2A2A2C] px-3 lg:px-5">
+            <div className="flex min-w-0 items-center gap-3">
               {activeConversation ? (
                 <>
                   <div className="relative h-10 w-10 shrink-0">
@@ -1444,9 +1463,9 @@ export default function ChatPage() {
                     />
                     <span className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] border-2 border-black" />
                   </div>
-                  <div>
-                    <h2 className="font-medium text-sm text-[#FFFFFF]">{activeConversation.title || "Conversation"}</h2>
-                    <p className="text-xs text-[#8E8E93]">{activeConversation.participantCount} members · Active</p>
+                  <div className="min-w-0">
+                    <h2 className="font-medium text-sm text-[#FFFFFF] truncate">{activeConversation.title || "Conversation"}</h2>
+                    <p className="text-xs text-[#8E8E93] truncate">{activeConversation.participantCount} members · Active</p>
                   </div>
                 </>
               ) : (
@@ -1461,7 +1480,27 @@ export default function ChatPage() {
                 </>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-0.5 lg:gap-2">
+              <button
+                onClick={() => setCopilotDrawer(true)}
+                className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors xl:hidden"
+                aria-label="Open AI copilot"
+              >
+                <Sparkles className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setShowCopilot((prev) => !prev)}
+                className={cn(
+                  "hidden xl:inline-flex p-2 rounded-lg transition-colors",
+                  showCopilot
+                    ? "bg-[#25D366]/10 text-[#25D366]"
+                    : "text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF]"
+                )}
+                aria-label="Toggle AI copilot"
+                aria-pressed={showCopilot}
+              >
+                <Sparkles className="h-5 w-5" />
+              </button>
               {activeConversation?.title !== "Relay Assistant" ? (
                 <>
                   <button ref={moreOptionsRef} onClick={(e) => { e.stopPropagation(); setShowMoreOptions((prev) => !prev); }} className="relative inline-block p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors" aria-label="More options">
@@ -1588,7 +1627,37 @@ export default function ChatPage() {
             </div>
           </form>
         </main>
-        <CopilotBriefPanel activeConversation={activeConversation} messages={visibleMessages} onSummarize={() => {}} onExtractTasks={() => {}} />
+
+        {/* AI copilot: drawer on tablets, docked column on wide desktops */}
+        {copilotDrawer && (
+          <>
+            <div
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm xl:hidden"
+              onClick={() => setCopilotDrawer(false)}
+              aria-hidden="true"
+            />
+            <div className="fixed inset-y-0 right-0 z-50 flex w-[min(92vw,380px)] shadow-2xl xl:hidden">
+              <CopilotBriefPanel
+                activeConversation={activeConversation}
+                messages={visibleMessages}
+                onSummarize={() => {}}
+                onExtractTasks={() => {}}
+                onClose={() => setCopilotDrawer(false)}
+              />
+            </div>
+          </>
+        )}
+        {showCopilot && (
+          <div className="hidden xl:flex xl:w-[360px] xl:shrink-0">
+            <CopilotBriefPanel
+              activeConversation={activeConversation}
+              messages={visibleMessages}
+              onSummarize={() => {}}
+              onExtractTasks={() => {}}
+              onClose={() => setShowCopilot(false)}
+            />
+          </div>
+        )}
         {isCalling && (
           <CallOverlay open={isCalling} onClose={() => setIsCalling(false)} callType={callType} peer={{ name: activeConversation?.title || "Contact", avatarUrl: activeConversation?.other?.avatarUrl || "https://ui-avatars.com/api/?name=Contact&background=25D366&color=fff" }} />
         )}
