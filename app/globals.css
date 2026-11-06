@@ -59,3 +59,175 @@ html, body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
 }
+
+/* ============================================================================
+   Relay Design Tokens — OLED WhatsApp/IG aesthetic
+   ============================================================================ */
+:root {
+  --relay-bg: #0a0a0c;
+  --relay-panel: #0f0f11;
+  --relay-border: #2a2a2c;
+  --relay-border-strong: #3a3a3c;
+  --relay-text: #f8fafc;
+  --relay-text-secondary: #a1a1aa;
+  --relay-text-muted: #8e8e93;
+  --relay-text-faint: #5c5c62;
+
+  --relay-green: #25d366;
+  --relay-green-dark: #1e9e52;
+  --relay-green-ink: #0b3e1f;
+
+  --relay-bubble-sent: #25d366;
+  --relay-bubble-sent-ink: #000000;
+  --relay-bubble-received: #1c1c1e;
+  --relay-bubble-received-border: #2a2a2c;
+
+  --relay-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --relay-safe-top: env(safe-area-inset-top, 0px);
+  --relay-safe-right: env(safe-area-inset-right, 0px);
+  --relay-safe-left: env(safe-area-inset-left, 0px);
+}
+
+/* ============================================================================
+   Physics-based page transitions (Phase 2)
+   ============================================================================ */
+@keyframes relaySlideInFromRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+@keyframes relaySlideOutToLeft {
+  from { transform: translateX(0);     opacity: 1; }
+  to   { transform: translateX(-100%); opacity: 0; }
+}
+@keyframes relaySlideInFromLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+@keyframes relaySlideOutToRight {
+  from { transform: translateX(0);     opacity: 1; }
+  to   { transform: translateX(100%);  opacity: 0; }
+}
+@keyframes relayScaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+@keyframes relayScaleOut {
+  from { transform: scale(1);    opacity: 1; }
+  to   { transform: scale(0.95); opacity: 0; }
+}
+@keyframes relayFadeInUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes relayPulseDot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+@keyframes relayTypingBounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
+.relay-animate-slide-in-right {
+  animation: relaySlideInFromRight 260ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.relay-animate-slide-out-left {
+  animation: relaySlideOutToLeft 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.relay-animate-slide-in-left {
+  animation: relaySlideInFromLeft 260ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.relay-animate-slide-out-right {
+  animation: relaySlideOutToRight 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.relay-animate-scale-in {
+  animation: relayScaleIn 160ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.relay-animate-scale-out {
+  animation: relayScaleOut 100ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.relay-animate-fade-in-up {
+  animation: relayFadeInUp 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.relay-animate-pulse-dot {
+  animation: relayPulseDot 1.4s infinite ease-in-out both;
+}
+.relay-animate-typing-bounce {
+  animation: relayTypingBounce 1.2s infinite ease-in-out both;
+}
+
+/* ============================================================================
+   Custom scrollbars — thin, subtle, OLED-friendly (Phase 6)
+   ============================================================================ */
+.relay-scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.relay-scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.relay-scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.10) transparent;
+}
+.relay-scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.relay-scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.relay-scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+}
+.relay-scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.relay-scrollbar-thin::-webkit-scrollbar-thumb:active {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* ============================================================================
+   OLED anti-smear & performance (Phase 6)
+   ============================================================================ */
+.relay-anti-smear {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+}
+.relay-will-change-scroll {
+  will-change: scroll-position;
+  transform: translateZ(0);
+}
+
+/* ============================================================================
+   Safe area shims — iOS home indicator / virtual keyboard (Phase 2)
+   ============================================================================ */
+.relay-pb-safe {
+  padding-bottom: calc(var(--relay-safe-bottom) + 1rem);
+}
+.relay-pt-safe {
+  padding-top: calc(var(--relay-safe-top) + 0.5rem);
+}
+.relay-pr-safe {
+  padding-right: calc(var(--relay-safe-right) + 0.75rem);
+}
+.relay-pl-safe {
+  padding-left: calc(var(--relay-safe-left) + 0.75rem);
+}
+
+/* ============================================================================
+   Bubble geometry tokens (Phase 1) — consumed by clip-path tails & corners
+   ============================================================================ */
+.relay-bubble-tail-in {
+  clip-path: polygon(
+    0 0, 100% 0, 100% 80%, 88% 100%, 76% 100%, 0 100%
+  );
+}
+.relay-bubble-tail-out {
+  clip-path: polygon(
+    0 0, 100% 0, 100% 100%, 88% 100%, 100% 80%, 0 100%
+  );
+}
