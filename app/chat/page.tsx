@@ -299,6 +299,52 @@ function MessageBubble({ message, isMe }: { message: Message; isMe: boolean }) {
   );
 }
 
+function renderAiInline(text: string, keyPrefix: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`\n]+`)/g);
+  return parts.map((part, i) => {
+    const key = `${keyPrefix}-${i}`;
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+      return (
+        <strong key={key} className="font-semibold text-[#FFFFFF]">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
+      return (
+        <code key={key} className="rounded bg-black/50 px-1 py-0.5 text-[11px] text-[#E5E5E7]">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return <span key={key}>{part}</span>;
+  });
+}
+
+/** Renders fenced code blocks, inline code and **bold** from AI replies. */
+function RichAiText({ text }: { text: string }) {
+  const blocks = text.split(/```/);
+  return (
+    <>
+      {blocks.map((block, i) => {
+        if (i % 2 === 1) {
+          const firstNewline = block.indexOf("\n");
+          const code = firstNewline >= 0 ? block.slice(firstNewline + 1) : block;
+          return (
+            <pre
+              key={i}
+              className="my-1 overflow-x-auto rounded-lg border border-white/10 bg-black/60 p-2 text-[11px] leading-relaxed text-[#E5E5E7] whitespace-pre"
+            >
+              <code>{code.replace(/\n$/, "")}</code>
+            </pre>
+          );
+        }
+        return <span key={i}>{renderAiInline(block, `b${i}`)}</span>;
+      })}
+    </>
+  );
+}
+
 function CopilotBriefPanel({
   activeConversation,
   messages,
@@ -385,9 +431,17 @@ function CopilotBriefPanel({
                 : "mr-auto bg-[#1C1C1E] border border-[#2A2A2C] text-[#FFFFFF] rounded-tl-none"
             )}
           >
-            {msg.text}
+            {msg.role === "assistant" ? <RichAiText text={msg.text} /> : msg.text}
           </div>
         ))}
+        {loading && (
+          <div className="mr-auto flex items-center gap-1.5 rounded-xl rounded-tl-none border border-[#2A2A2C] bg-[#1C1C1E] px-3 py-2">
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#25D366] [animation-delay:-0.2s]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#25D366] [animation-delay:-0.1s]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#25D366]" />
+            <span className="ml-1 text-[10px] text-[#8E8E93]">Relay AI is thinking…</span>
+          </div>
+        )}
       </div>
       <div className="border-t border-[#2A2A2C] pt-3 bg-[#0A0A0C]/20 backdrop-blur-sm">
         <div className="flex items-end gap-2 p-2">
