@@ -55,6 +55,16 @@ const GEMINI_MODELS = process.env.GEMINI_MODEL
     ];
 
 /**
+ * Last model that answered successfully on this (warm) instance. Trying it
+ * first avoids paying the 503/high-demand penalty on every request when the
+ * newest model is temporarily saturated.
+ */
+let preferredGeminiModel: string | null = null;
+
+/** Per-attempt ceiling so one slow model cannot stall the whole response. */
+const GEMINI_ATTEMPT_TIMEOUT_MS = 12000;
+
+/**
  * Ask the Gemini API which models this key can actually use, and return the
  * Flash-family ones that support generateContent. Used only when the preferred
  * list goes stale, so a future rename self-heals instead of silently falling
@@ -355,6 +365,7 @@ async function callGemini(prompt: string): Promise<GeminiResult> {
             },
           }),
           cache: "no-store",
+          signal: AbortSignal.timeout(GEMINI_ATTEMPT_TIMEOUT_MS),
         },
       );
 
@@ -384,9 +395,9 @@ async function callGemini(prompt: string): Promise<GeminiResult> {
         return null;
       }
 
+      preferredGeminiModel = model;
       return { ok: true as const, text, model };
-    } catch (geminiError) {
-      const message =
+    } catch (geminiError) {      const message =
         geminiError instanceof Error ? geminiError.message : String(geminiError);
       attempts.push({ model, status: 0, error: message });
       lastError = message;
@@ -395,7 +406,14 @@ async function callGemini(prompt: string): Promise<GeminiResult> {
     }
   };
 
-  for (const model of GEMINI_MODELS) {
+  const orderedModels = preferredGeminiModel
+    ? [
+        preferredGeminiModel,
+        ...GEMINI_MODELS.filter((model) => model !== preferredGeminiModel),
+      ]
+    : GEMINI_MODELS;
+
+  for (const model of orderedModels) {
     const result = await attemptModel(model);
     if (result) return result;
     if (keyIsInvalid) return { ok: false, error: lastError, attempts };
@@ -405,7 +423,7 @@ async function callGemini(prompt: string): Promise<GeminiResult> {
   // which ones exist for this key and retry with those.
   if (!keyIsInvalid) {
     const discovered = await discoverGeminiModels(keyInfo.key);
-    const untried = discovered.filter((model) => !GEMINI_MODELS.includes(model));
+    const untried = discovered.filter((model) => !orderedModels.includes(model));
     process.stderr.write(
       `[AI] Falling back to discovered models: ${untried.join(", ") || "none"}\n`,
     );

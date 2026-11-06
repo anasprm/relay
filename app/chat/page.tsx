@@ -432,22 +432,41 @@ function CopilotBriefPanel({
   }, [onExtractTasks]);
 
   const handleAiSend = useCallback(async () => {
-    if (!aiInput.trim()) return;
-    setAiMessages((prev) => [...prev, { role: "user", text: aiInput }]);
+    const text = aiInput.trim();
+    if (!text) return;
+    setAiMessages((prev) => [...prev, { role: "user", text }]);
     setAiInput("");
     setLoading(true);
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 45000);
+
     try {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: aiInput }),
+        body: JSON.stringify({ message: text }),
+        signal: controller.signal,
       });
-      const data = await res.json();
-      const aiText = data.response || "I'm having trouble responding right now. Please try again.";
+      const data = await res.json().catch(() => null);
+      const aiText =
+        data?.response ||
+        data?.error ||
+        "I'm having trouble responding right now. Please try again.";
       setAiMessages((prev) => [...prev, { role: "assistant", text: aiText }]);
-    } catch {
-      setAiMessages((prev) => [...prev, { role: "assistant", text: "I'm having trouble connecting. Please check your connection and try again." }]);
+    } catch (error) {
+      const timedOut = error instanceof DOMException && error.name === "AbortError";
+      setAiMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: timedOut
+            ? "That took longer than expected. Please try again — Relay AI is still warming up."
+            : "I can't reach the AI service right now. Check your connection and try again.",
+        },
+      ]);
     } finally {
+      clearTimeout(timer);
       setLoading(false);
     }
   }, [aiInput]);
