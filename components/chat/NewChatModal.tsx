@@ -12,6 +12,7 @@ import { Portal } from './Portal';
 import { api } from '@/lib/api';
 import { errorMessage } from '@/lib/AuthProvider';
 import { findExistingOneOnOneChat } from '@/lib/chatHelpers';
+import { getOrCreateDirectChat } from '@/lib/actions/chatActions';
 import { cn } from '@/lib/utils';
 import type { Conversation, User } from '@/lib/types';
 
@@ -145,17 +146,13 @@ export function NewChatModal({
 
         // ------------------------------------------------------------------
         // Phase B: Server-side fallback. No local thread found, so create
-        // a new direct conversation via the API.
+        // a new direct conversation via the server action.
         // ------------------------------------------------------------------
-        const response = await api.post<{ conversationId: string }>(
-          '/api/conversations',
-          {
-            type: 'direct',
-            participantIds: [selected[0].id],
-          },
+        const result = await getOrCreateDirectChat(
+          currentUserId || '',
+          selected[0].id,
         );
-        const convId = response.conversationId;
-        onSelectConversation(convId);
+        onSelectConversation(result.conversationId);
         onClose();
       } else {
         // Create group conversation (no dedup needed for groups)

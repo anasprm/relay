@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getOrCreateDirectChat } from "@/lib/actions/chatActions";
 
 export async function GET(request: Request) {
   const mockConversations = [
@@ -56,7 +57,31 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, type, participants } = body;
+    const { name, type, participantIds } = body;
+
+    // Direct chat: use hybrid dedup engine
+    if (type === "direct" && participantIds?.length === 2) {
+      const currentUserId = body.currentUserId; // Passed by client
+      const targetUserId = participantIds.find(
+        (id: string) => id !== currentUserId
+      );
+
+      if (!currentUserId || !targetUserId) {
+        return NextResponse.json(
+          { error: "currentUserId and target user required for direct chat" },
+          { status: 400 }
+        );
+      }
+
+      const result = await getOrCreateDirectChat(currentUserId, targetUserId);
+      return NextResponse.json({
+        conversationId: result.conversationId,
+        isNew: result.isNew,
+        type: "direct",
+      });
+    }
+
+    // Group chat: create new
     const newConv = {
       id: "room_" + Math.random().toString(36).substring(2, 9),
       name: name || "New Workspace Chat",
