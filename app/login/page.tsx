@@ -89,7 +89,7 @@ export default function LoginPage() {
             <div className="flex justify-end mt-1">
               <button
                 type="button"
-                onClick={() => setRecoveryOpen(true)}
+                onClick={() => router.push("/forgot-password")}
                 className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline transition-colors"
               >
                 Forgot password?
