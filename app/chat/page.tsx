@@ -346,13 +346,26 @@ function CopilotBriefPanel({
     }, 1200);
   }, [onExtractTasks]);
 
-  const handleAiSend = useCallback(() => {
+  const handleAiSend = useCallback(async () => {
     if (!aiInput.trim()) return;
-    setAiMessages((prev) => [...prev, { role: "user", text: aiInput }]);
+    const userMsg = aiInput;
+    setAiMessages((prev) => [...prev, { role: "user", text: userMsg }]);
     setAiInput("");
-    setTimeout(() => {
-      setAiMessages((prev) => [...prev, { role: "assistant", text: generateAiResponse(aiInput) }]);
-    }, 700);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMsg }),
+      });
+      const data = await res.json();
+      const aiText = data.response || "I'm having trouble responding right now. Please try again.";
+      setAiMessages((prev) => [...prev, { role: "assistant", text: aiText }]);
+    } catch {
+      setAiMessages((prev) => [...prev, { role: "assistant", text: "I'm having trouble connecting. Please check your connection and try again." }]);
+    } finally {
+      setLoading(false);
+    }
   }, [aiInput]);
 
   const generateAiResponse = useCallback((input: string): string => {
@@ -654,22 +667,22 @@ function MoreOptionsMenu({
   if (!open) return null;
 
   return (
-    <div className="absolute right-0 top-full mt-2 z-50 w-56 bg-[#0a0a0c]/90 border border-white/10 rounded-2xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200">
+    <div className="absolute right-0 top-full mt-2 w-48 z-50 bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl py-1 text-sm text-neutral-200 animate-in fade-in zoom-in duration-200">
       {onClearChat && (
         <button
           onClick={() => { onClearChat(); onClose(); }}
-          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors"
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-neutral-200 hover:bg-white/5 transition-colors"
         >
-          <FileText className="h-4 w-4 text-slate-500 shrink-0" />
+          <FileText className="h-4 w-4 text-neutral-400 shrink-0" />
           <span>Clear chat history</span>
         </button>
       )}
       {onMute && (
         <button
           onClick={() => { onMute(); onClose(); }}
-          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors"
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-neutral-200 hover:bg-white/5 transition-colors"
         >
-          <Bell className="h-4 w-4 text-slate-500 shrink-0" />
+          <Bell className="h-4 w-4 text-neutral-400 shrink-0" />
           <span>Mute notifications</span>
         </button>
       )}
@@ -682,9 +695,9 @@ function MoreOptionsMenu({
       </button>
       <button
         onClick={onClose}
-        className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-slate-300 hover:bg-white/5 transition-colors"
+        className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-neutral-200 hover:bg-white/5 transition-colors"
       >
-        <X className="h-4 w-4 text-slate-500 shrink-0" />
+        <X className="h-4 w-4 text-neutral-400 shrink-0" />
         <span>Cancel</span>
       </button>
     </div>
