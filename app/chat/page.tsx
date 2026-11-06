@@ -27,7 +27,6 @@ import {
   Paperclip,
   Phone,
   Play,
-  Plus,
   Search,
   Send,
   Settings,
@@ -568,9 +567,10 @@ export function Composer({
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSend(); }} className="w-full">
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-1.5 bg-[#0A0A0C] border-t border-[#1C1C1E] px-2 py-1.5">
+        {/* Left: Attachment */}
         <label
-          className="p-2 rounded-xl text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] cursor-pointer"
+          className="p-1.5 rounded-[14px] text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] cursor-pointer"
           aria-label="Attach file"
         >
           <Paperclip className="h-5 w-5" />
@@ -582,28 +582,8 @@ export function Composer({
             accept="image/*,application/pdf,video/*"
           />
         </label>
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="p-2 rounded-xl text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]"
-          aria-label="Attach file"
-        >
-          <Plus className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          onClick={onToggleEmoji}
-          className={cn(
-            'p-2 rounded-xl text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] relative',
-            emojiOpen ? 'text-[#25D366]' : '',
-          )}
-          aria-label="Emoji picker"
-        >
-          <Smile className="h-5 w-5" />
-          {emojiOpen && (
-            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] border-2 border-black" />
-          )}
-        </button>
+
+        {/* Center: Textarea */}
         <div className="flex-1 relative min-w-0">
           <textarea
             ref={textareaRef}
@@ -613,12 +593,24 @@ export function Composer({
             rows={1}
             maxRows={5}
             disabled={disabled}
-            className="w-full bg-transparent text-sm text-[#FFFFFF] placeholder-[#8E8E93] resize-none focus:outline-none relay-scrollbar-hide"
+            className="w-full bg-[#0A0A0C]/40 border border-[#2A2A2C] rounded-[14px] text-sm text-[#FFFFFF] placeholder-[#8E8E93] resize-none focus:outline-none focus:border-[#25D366]/50 relay-scrollbar-hide"
             onKeyDown={handleKeyDown}
-            style={{ maxHeight: 120, overflowY: 'auto' }}
+            style={{ maxHeight: 120, overflowY: 'auto', paddingRight: '48px' }}
           />
+          {/* Inside right border: Emoji trigger */}
+          <button
+            type="button"
+            onClick={onToggleEmoji}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-[14px] text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]"
+            aria-label="Emoji picker"
+          >
+            <Smile className="h-5 w-5" />
+            {emojiOpen && (
+              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] border-2 border-black" />
+            )}
+          </button>
           {pendingAttachment && (
-            <div className="absolute bottom-full left-0 right-0 mb-1 flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[#2A2A2C] border border-[#2A2A2C] shadow-lg">
+            <div className="absolute bottom-full left-1 right-1 mb-1 flex items-center gap-2 px-2 py-1 rounded-lg bg-[#2A2A2C] border border-[#2A2A2C] shadow-lg">
               <ImageIcon className="h-4 w-4 text-[#25D366] shrink-0" />
               <span className="text-xs text-[#8E8E93] truncate">{pendingAttachment.name}</span>
               <button
@@ -631,12 +623,13 @@ export function Composer({
             </div>
           )}
         </div>
-        {/* Send / Mic morph — Phase 4 */}
+
+        {/* Far right: Send / Mic morph */}
         <button
           type="submit"
           disabled={isEmpty || disabled}
           className={cn(
-            'p-2 rounded-xl text-[#FFFFFF] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97]',
+            'p-2 rounded-[14px] text-[#FFFFFF] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97]',
             isEmpty || disabled
               ? 'bg-[#1C1C1E] border border-[#2A2A2C] text-[#8E8E93]'
               : 'bg-[#25D366] hover:bg-[#1E9E52] shadow-[0_0_16px_rgba(37,211,102,0.35)]',
