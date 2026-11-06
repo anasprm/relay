@@ -368,55 +368,6 @@ function CopilotBriefPanel({
     }
   }, [aiInput]);
 
-  const generateAiResponse = useCallback((input: string): string => {
-    const lower = input.toLowerCase().trim();
-
-    if (lower.includes("joke") || lower.includes("funny") || lower.includes("comedy")) {
-      const jokes = [
-        "Why do developers prefer dark mode? Because light attracts bugs! 🐛",
-        "Why did the React component go to therapy? It had too many state issues. ⚛️",
-        "Why was the JavaScript developer sad? Because they didn't know how to 'null' their feelings. 😢",
-        "A SQL query walks into a bar, walks up to two tables and asks… 'Can I join you?' 🍺",
-        "Why do programmers always mix up Halloween and Christmas? Because Oct 31 == Dec 25! 🎃🎄",
-      ];
-      return jokes[Math.floor(Math.random() * jokes.length)];
-    }
-
-    if (lower.includes("hello") || lower.includes("hi ") || lower.includes("hey")) {
-      return "Hello there! 👋 I'm your Relay AI assistant. Ask me anything about messaging, workspace setup, or just tell me a joke!";
-    }
-
-    if (lower.includes("help") || lower.includes("assist")) {
-      return "I can help you summarize conversations, extract action items, draft replies, or just chat. What's on your mind?";
-    }
-
-    if (lower.includes("relay") || lower.includes("messenger") || lower.includes("workspace")) {
-      return "Relay Messenger Pro is a spatial glassmorphic workspace with real-time messaging, voice/video calls, stories, and AI-powered briefs. Built for teams that value privacy and OLED aesthetics. 🌙";
-    }
-
-    if (lower.includes("weather")) {
-      return "I can't check live weather yet, but I hope it's sunny wherever you are! ☀️ Want me to help with something else?";
-    }
-
-    if (lower.includes("thank") || lower.includes("thanks")) {
-      return "You're welcome! Happy to help anytime. 🙌";
-    }
-
-    if (lower.includes("bye") || lower.includes("goodbye")) {
-      return "Goodbye! I'll be here whenever you need me. Take care! 👋";
-    }
-
-    // Default smart response
-    const defaults = [
-      "That's an interesting point! Could you tell me more about it?",
-      "I'm not sure I have the answer to that, but I'd love to learn more. What else would you like to discuss?",
-      "Great question! Let me think about that... In the meantime, is there anything else I can help with?",
-      "I appreciate you sharing that. Would you like me to help summarize or extract action items from this conversation?",
-      "Hmm, that's a good one! I don't have a specific answer, but I'm here to chat about anything Relay-related.",
-    ];
-    return defaults[Math.floor(Math.random() * defaults.length)];
-  }, []);
-
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       {/* Header */}
@@ -667,7 +618,7 @@ function MoreOptionsMenu({
   if (!open) return null;
 
   return (
-    <div className="absolute right-0 top-full mt-2 w-48 z-50 bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl py-1 text-sm text-neutral-200 animate-in fade-in zoom-in duration-200">
+    <div className="absolute right-2 top-12 w-48 z-50 bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl py-1 text-sm text-neutral-200 animate-in fade-in zoom-in duration-200">
       {onClearChat && (
         <button
           onClick={() => { onClearChat(); onClose(); }}
@@ -837,7 +788,8 @@ export default function ChatPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread" | "favorites" | "groups">("all");
 
-  // Interaction states
+  // Mobile navigation state
+  const [activeMobileView, setActiveMobileView] = useState<"LIST" | "CHAT" | "COPILOT">("LIST");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
@@ -991,6 +943,18 @@ export default function ChatPage() {
     toast("Notifications muted", "info");
   }, [toast]);
 
+  const openChat = () => {
+    setActiveMobileView("CHAT");
+  };
+
+  const openCopilot = () => {
+    setActiveMobileView("COPILOT");
+  };
+
+  const openList = () => {
+    setActiveMobileView("LIST");
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
@@ -1006,180 +970,28 @@ export default function ChatPage() {
     return null; // redirect handled by effect
   }
 
+  const isMobile = true; // We use Tailwind breakpoints for actual detection
+
   return (
-    <div className="flex h-screen bg-[#050505] text-slate-100 overflow-hidden">
+    <div className="h-screen bg-[#050505] text-slate-100 overflow-hidden">
       {/* ========================================================
-         LEFT SIDEBAR — Conversations
+         MOBILE VIEW (md:hidden)
          ======================================================== */}
-      <aside
-        className="hidden lg:flex flex-col w-80 bg-[#0a0a0c]/60 backdrop-blur-xl border-r border-white/10 transition-all duration-300"
-        aria-label="Conversations sidebar"
-      >
-        {/* Header */}
-        <div className="flex h-16 shrink-0 items-center justify-between bg-[#0a0a0c]/30 border-b border-white/5 px-4">
-          <div className="flex items-center gap-2">
-            <Logo className="h-8 w-8 text-cyan-400" compact />
-            <span className="font-bold text-lg tracking-tight text-white">Relay</span>
-          </div>
-          <button
-            onClick={handleNewChat}
-            className="relative group flex h-8 w-8 items-center justify-center rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:text-cyan-400 transition-all text-cyan-300"
-            aria-label="New conversation"
-          >
-            <MessageSquarePlus className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 group-hover:bg-emerald-400 border-2 border-black" />
-          </button>
-        </div>
-
-        {/* Search & Filters */}
-        <div className="p-3 space-y-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search conversations…"
-              className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all"
-            />
-          </div>
-          <div className="flex gap-1">
-            {["all", "unread", "favorites", "groups"].map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f as typeof filter)}
-                className={cn(
-                  "flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all",
-                  filter === f
-                    ? "bg-cyan-500/10 border border-cyan-500/30 text-cyan-300"
-                    : "bg-transparent text-slate-400 hover:text-white hover:bg-white/5"
-                )}
-              >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Conversation List */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {filteredConversations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center text-slate-500">
-              <MessageSquarePlus className="h-10 w-10 mb-2 opacity-30" />
-              <p className="text-sm">No conversations yet</p>
-              <button
-                onClick={handleNewChat}
-                className="mt-3 text-xs text-cyan-400 underline hover:text-cyan-300"
-              >
-                Start a new chat
-              </button>
-            </div>
-          ) : (
-            filteredConversations.map((conv) => {
-              const isActive = conv.id === activeId;
-              const unread = conv.unreadCount > 0;
-              return (
-                <button
-                  key={conv.id}
-                  onClick={() => {
-                    setActiveId(conv.id);
-                    setMessages(
-                      conv.id === "conv_general_community" ? MOCK_MESSAGES : []
-                    );
-                  }}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
-                    isActive
-                      ? "bg-cyan-500/15 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
-                      : "hover:bg-white/5 border border-transparent"
-                  )}
-                >
-                  <div className="relative h-10 w-10 shrink-0">
-                    <img
-                      src={conv.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=06b6d4&color=fff"}
-                      alt={conv.title || "Conversation"}
-                      className="h-full w-full rounded-full object-cover border border-white/10"
-                    />
-                    {unread && (
-                      <div className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium text-sm text-white truncate">
-                        {conv.title || conv.other?.displayName || "Unknown"}
-                      </h3>
-                      <span className="text-[10px] text-slate-500">
-                        {new Date(conv.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <p className="text-xs text-slate-400 truncate">{conv.lastMessage?.text || "No messages yet"}</p>
-                      {unread && (
-                        <span className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-black">
-                          {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+      <div className="md:hidden flex h-screen flex-col">
+        {/* Mobile List View */}
+        {activeMobileView === "LIST" && (
+          <>
+            {/* Mobile Header */}
+            <header className="flex h-16 shrink-0 items-center justify-between bg-[#0a0a0c]/30 border-b border-white/5 px-4 z-20">
+              <div className="flex items-center gap-2">
+                <Logo className="h-8 w-8 text-cyan-400" compact />
+                <span className="font-bold text-lg tracking-tight text-white">Relay</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Search className="h-5 w-5 text-slate-400" />
+                <button className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Camera">
+                  <Play className="h-5 w-5" />
                 </button>
-              );
-            })
-          )}
-        </div>
-
-        {/* Bottom profile */}
-        <div className="p-3 border-t border-white/10">
-          <div className="flex items-center gap-3 cursor-pointer hover:bg-white/5 rounded-xl p-2 transition-colors">
-            <Avatar user={user} size={32} />
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm text-white truncate">{user.displayName}</h3>
-              <p className="text-xs text-slate-400 truncate">{user.username}</p>
-            </div>
-            <MoreVertical className="h-4 w-4 text-slate-500" />
-          </div>
-        </div>
-      </aside>
-
-      {/* ========================================================
-         MAIN — Chat / Stories Feed
-         ======================================================== */}
-      <main className="flex-1 flex flex-col min-w-0 bg-[#050505]/80 backdrop-blur-sm">
-        {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between bg-[#0a0a0c]/30 border-b border-white/5 px-6">
-          <div className="flex items-center gap-3">
-            {activeConversation ? (
-              <>
-                <div className="relative h-10 w-10 shrink-0">
-                  <img
-                    src={activeConversation.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=06b6d4&color=fff"}
-                    alt={activeConversation.title || "Conversation"}
-                    className="h-full w-full rounded-full object-cover border border-white/10"
-                  />
-                  <span className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />
-                </div>
-                <div>
-                  <h2 className="font-medium text-sm text-white">{activeConversation.title || "Conversation"}</h2>
-                  <p className="text-xs text-slate-400">
-                    {activeConversation.participantCount} members · Active
-                  </p>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center text-slate-400">
-                  <UserRound className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="font-medium text-sm text-white">Select a conversation</h2>
-                  <p className="text-xs text-slate-400">Start a new chat or pick one from the sidebar</p>
-                </div>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {activeConversation?.title !== "Relay Assistant" ? (
-              <>
                 <button
                   ref={moreOptionsRef}
                   onClick={(e) => {
@@ -1191,41 +1003,132 @@ export default function ChatPage() {
                 >
                   <MoreVertical className="h-5 w-5" />
                 </button>
-                <button
-                  onClick={() => handleStartCall("audio")}
-                  className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
-                  aria-label="Start audio call"
-                >
+                {showMoreOptions && (
+                  <MoreOptionsMenu
+                    open={true}
+                    onClose={() => setShowMoreOptions(false)}
+                    onClearChat={handleClearChat}
+                    onMute={handleMute}
+                    onLeaveGroup={() => {
+                      toast("Left the group", "info");
+                      setActiveId(null);
+                      setShowMoreOptions(false);
+                    }}
+                  />
+                )}
+              </div>
+            </header>
+
+            {/* Conversation List */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {filteredConversations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center text-slate-500">
+                  <MessageSquarePlus className="h-10 w-10 mb-2 opacity-30" />
+                  <p className="text-sm">No conversations yet</p>
+                  <button
+                    onClick={handleNewChat}
+                    className="mt-3 text-xs text-cyan-400 underline hover:text-cyan-300"
+                  >
+                    Start a new chat
+                  </button>
+                </div>
+              ) : (
+                filteredConversations.map((conv) => {
+                  const isActive = conv.id === activeId;
+                  const unread = conv.unreadCount > 0;
+                  return (
+                    <button
+                      key={conv.id}
+                      onClick={() => {
+                        setActiveId(conv.id);
+                        setMessages(
+                          conv.id === "conv_general_community" ? MOCK_MESSAGES : []
+                        );
+                        setActiveMobileView("CHAT");
+                      }}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
+                        isActive
+                          ? "bg-cyan-500/15 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+                          : "hover:bg-white/5 border border-transparent"
+                      )}
+                    >
+                      <div className="relative h-10 w-10 shrink-0">
+                        <img
+                          src={conv.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=06b6d4&color=fff"}
+                          alt={conv.title || "Conversation"}
+                          className="h-full w-full rounded-full object-cover border border-white/10"
+                        />
+                        {unread && (
+                          <div className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-medium text-sm text-white truncate">
+                            {conv.title || conv.other?.displayName || "Unknown"}
+                          </h3>
+                          <span className="text-[10px] text-slate-500">
+                            {new Date(conv.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <p className="text-xs text-slate-400 truncate">{conv.lastMessage?.text || "No messages yet"}</p>
+                          {unread && (
+                            <span className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-black">
+                              {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Mobile Chat View */}
+        {activeMobileView === "CHAT" && (
+          <>
+            {/* Mobile Chat Header */}
+            <header className="flex h-16 shrink-0 items-center justify-between bg-[#0a0a0c]/30 border-b border-white/5 px-4 z-20">
+              <button
+                onClick={openList}
+                className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Back"
+              >
+                <ArrowRight className="h-5 w-5 rotate-180" />
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="relative h-10 w-10 shrink-0">
+                  <img
+                    src={activeConversation?.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=06b6d4&color=fff"}
+                    alt={activeConversation?.title || "Conversation"}
+                    className="h-full w-full rounded-full object-cover border border-white/10"
+                  />
+                  <span className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />
+                </div>
+                <div>
+                  <h2 className="font-medium text-sm text-white">{activeConversation?.title || "Conversation"}</h2>
+                  <p className="text-xs text-slate-400">{activeConversation?.participantCount} members · Active</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setActiveMobileView("COPILOT")} className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="AI Copilot">
+                  <ShieldCheck className="h-5 w-5" />
+                </button>
+                <button className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Call">
                   <Phone className="h-5 w-5" />
                 </button>
-                <button
-                  onClick={() => handleStartCall("video")}
-                  className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
-                  aria-label="Start video call"
-                >
+                <button className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Video">
                   <Video className="h-5 w-5" />
                 </button>
-              </>
-            ) : (
-              <button
-                ref={moreOptionsRef}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMoreOptions((prev) => !prev);
-                }}
-                className="relative inline-block p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
-                aria-label="More options"
-              >
-                <MoreVertical className="h-5 w-5" />
-              </button>
-            )}
-          </div>
-        </header>
+              </div>
+            </header>
 
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {activeConversation ? (
-            <>
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {visibleMessages.length > 0 ? (
                 visibleMessages.map((msg) => (
                   <MessageBubble key={msg.id} message={msg} isMe={msg.senderId === "usr_me"} />
@@ -1236,162 +1139,363 @@ export default function ChatPage() {
                   <p className="text-xs">Start the conversation by sending a message below.</p>
                 </div>
               )}
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center text-slate-600 pt-20">
-              <MessageSquarePlus className="h-12 w-12 mb-3 opacity-20" />
-              <h3 className="font-medium text-sm text-slate-400">Select a conversation to start messaging</h3>
-              <p className="text-xs text-slate-500 mt-1">Pick a thread from the sidebar or create a new one.</p>
             </div>
-          )}
-        </div>
 
-        {/* Message Input Bar */}
-        <form onSubmit={handleSend} className="p-4 border-t border-white/10 bg-[#0a0a0c]/40 backdrop-blur-xl">
-          <div className="flex items-end gap-2">
-            {/* Attachment */}
-            <label
-              className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors cursor-pointer"
-              aria-label="Attach file"
-            >
-              <Paperclip className="h-5 w-5" />
-              <input
-                type="file"
-                ref={setFileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-                accept="image/*,application/pdf"
-              />
-            </label>
-            {/* Emoji */}
-            <button
-              type="button"
-              onClick={() => setShowEmojiPicker((prev) => !prev)}
-              className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors relative"
-              aria-label="Emoji picker"
-            >
-              <Smile className="h-5 w-5" />
-              {showEmojiPicker && (
-                <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />
-              )}
-            </button>
-            {/* Text input */}
-            <div className="flex-1 relative">
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Type a message…"
-                rows={1}
-                maxRows={4}
-                className="w-full bg-transparent text-sm text-white placeholder-slate-500 resize-none focus:outline-none scrollbar-hide"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend(e);
-                  }
-                }}
-              />
-              {/* Emoji picker overlay */}
-              {showEmojiPicker && (
-                <div className="data-[emoji-picker] absolute bottom-[60px] left-0 w-full bg-[#0a0a0c]/90 border border-white/10 rounded-xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200 z-50">
-                  <div className="flex flex-wrap gap-1 max-h-48 overflow-y-auto">
-                    {EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => handleEmojiSelect(emoji)}
-                        className="h-8 w-8 rounded-lg text-lg hover:bg-white/5 transition-colors flex items-center justify-center"
-                        data-emoji-picker
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            {/* Pending attachment preview */}
-            {pendingAttachment && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 animate-in fade-in zoom-in duration-200">
-                <ImageIcon className="h-4 w-4 text-cyan-400 shrink-0" />
-                <span className="text-xs text-slate-300 truncate max-w-[120px]">{pendingAttachment.name}</span>
-                <button
-                  onClick={handleRemoveAttachment}
-                  className="p-1 rounded hover:bg-white/10 text-slate-500 hover:text-rose-400 transition-colors"
-                  aria-label="Remove attachment"
+            {/* Message Input Bar */}
+            <form onSubmit={handleSend} className="p-4 border-t border-white/10 bg-[#0a0a0c]/40 backdrop-blur-xl">
+              <div className="flex items-end gap-2">
+                <label
+                  className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors cursor-pointer"
+                  aria-label="Attach file"
                 >
-                  <X className="h-3 w-3" />
+                  <Paperclip className="h-5 w-5" />
+                  <input
+                    type="file"
+                    ref={setFileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept="image/*,application/pdf"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker((prev) => !prev)}
+                  className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors relative"
+                  aria-label="Emoji picker"
+                >
+                  <Smile className="h-5 w-5" />
+                  {showEmojiPicker && (
+                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />
+                  )}
+                </button>
+                <div className="flex-1 relative">
+                  <textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder="Type a message…"
+                    rows={1}
+                    maxRows={4}
+                    className="w-full bg-transparent text-sm text-white placeholder-slate-500 resize-none focus:outline-none scrollbar-hide"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend(e);
+                      }
+                    }}
+                  />
+                  {showEmojiPicker && (
+                    <div className="data-[emoji-picker] absolute bottom-[60px] left-0 w-full bg-[#0a0a0c]/90 border border-white/10 rounded-xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200 z-50">
+                      <div className="flex flex-wrap gap-1 max-h-48 overflow-y-auto">
+                        {EMOJIS.map((emoji) => (
+                          <button
+                            key={emoji}
+                            onClick={() => handleEmojiSelect(emoji)}
+                            className="h-8 w-8 rounded-lg text-lg hover:bg-white/5 transition-colors flex items-center justify-center"
+                            data-emoji-picker
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {pendingAttachment && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 animate-in fade-in zoom-in duration-200">
+                    <ImageIcon className="h-4 w-4 text-cyan-400 shrink-0" />
+                    <span className="text-xs text-slate-300 truncate max-w-[120px]">{pendingAttachment.name}</span>
+                    <button
+                      onClick={handleRemoveAttachment}
+                      className="p-1 rounded hover:bg-white/10 text-slate-500 hover:text-rose-400 transition-colors"
+                      aria-label="Remove attachment"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={(!draft.trim() && !pendingAttachment) || !activeId}
+                  className={cn(
+                    "px-5 py-2.5 rounded-xl text-white font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed",
+                    (draft.trim() || pendingAttachment) && activeId
+                      ? "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+                      : "bg-white/5 border border-white/10 text-slate-400"
+                  )}
+                >
+                  <Send className="h-5 w-5" />
                 </button>
               </div>
-            )}
-            {/* Send */}
+            </form>
+          </>
+        )}
+
+        {/* Mobile Copilot View */}
+        {activeMobileView === "COPILOT" && (
+          <CopilotBriefPanel
+            activeConversation={activeConversation}
+            messages={visibleMessages}
+            onSummarize={() => {}}
+            onExtractTasks={() => {}}
+          />
+        )}
+
+        {/* WhatsApp Bottom Nav (only on LIST view)} */}
+        {activeMobileView === "LIST" && (
+          <div className="h-16 border-t border-white/10 bg-[#050505] px-4 flex items-center justify-around">
             <button
-              type="submit"
-              disabled={(!draft.trim() && !pendingAttachment) || !activeId}
-              className={cn(
-                "px-5 py-2.5 rounded-xl text-white font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed",
-                (draft.trim() || pendingAttachment) && activeId
-                  ? "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-[0_0_15px_rgba(6,182,212,0.4)]"
-                  : "bg-white/5 border border-white/10 text-slate-400"
-              )}
+              onClick={() => {}}
+              className="flex flex-col items-center gap-1 text-cyan-400"
+              aria-label="Chats"
             >
-              <Send className="h-5 w-5" />
+              <MessageSquarePlus className="h-5 w-5" />
+              <span className="text-[10px]">Chats</span>
+            </button>
+            <button
+              onClick={() => {}}
+              className="flex flex-col items-center gap-1 text-slate-500 hover:text-white transition-colors"
+              aria-label="Status"
+            >
+              <Play className="h-5 w-5" />
+              <span className="text-[10px]">Status</span>
+            </button>
+            <button
+              onClick={() => {}}
+              className="flex flex-col items-center gap-1 text-slate-500 hover:text-white transition-colors"
+              aria-label="Communities"
+            >
+              <Users className="h-5 w-5" />
+              <span className="text-[10px]">Communities</span>
+            </button>
+            <button
+              onClick={() => setActiveMobileView("CHAT")}
+              className="flex flex-col items-center gap-1 text-slate-500 hover:text-white transition-colors"
+              aria-label="Calls"
+            >
+              <Phone className="h-5 w-5" />
+              <span className="text-[10px]">Calls</span>
             </button>
           </div>
-        </form>
-      </main>
+        )}
+      </div>
 
       {/* ========================================================
-         RIGHT — AI Copilot Panel
+         DESKTOP VIEW (md:flex)
          ======================================================== */}
-      <CopilotBriefPanel
-        activeConversation={activeConversation}
-        messages={visibleMessages}
-        onSummarize={() => {}}
-        onExtractTasks={() => {}}
-      />
+      <div className="md:flex hidden h-screen">
+        {/* LEFT SIDEBAR — Conversations */}
+        <aside className="flex flex-col w-80 bg-[#0a0a0c]/60 backdrop-blur-xl border-r border-white/10 transition-all duration-300" aria-label="Conversations sidebar">
+          {/* Header */}
+          <div className="flex h-16 shrink-0 items-center justify-between bg-[#0a0a0c]/30 border-b border-white/5 px-4">
+            <div className="flex items-center gap-2">
+              <Logo className="h-8 w-8 text-cyan-400" compact />
+              <span className="font-bold text-lg tracking-tight text-white">Relay</span>
+            </div>
+            <button
+              onClick={handleNewChat}
+              className="relative group flex h-8 w-8 items-center justify-center rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:text-cyan-400 transition-all text-cyan-300" aria-label="New conversation"
+            >
+              <MessageSquarePlus className="h-5 w-5" />
+              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 group-hover:bg-emerald-400 border-2 border-black" />
+            </button>
+          </div>
 
-      {/* ========================================================
-         Call Overlay Modal
-         ======================================================== */}
-      {isCalling && (
-        <CallOverlay
-          open={isCalling}
-          onClose={() => setIsCalling(false)}
-          callType={callType}
-          peer={{
-            name: activeConversation?.title || "Contact",
-            avatarUrl: activeConversation?.other?.avatarUrl || "https://ui-avatars.com/api/?name=Contact&background=06b6d4&color=fff",
-          }}
-        />
-      )}
+          {/* Search & Filters */}
+          <div className="p-3 space-y-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search conversations…"
+                className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+              />
+            </div>
+            <div className="flex gap-1">
+              {["all", "unread", "favorites", "groups"].map((f) => (
+                <button key={f} onClick={() => setFilter(f as typeof filter)} className={cn(
+                  "flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all",
+                  filter === f ? "bg-cyan-500/10 border border-cyan-500/30 text-cyan-300" : "bg-transparent text-slate-400 hover:text-white hover:bg-white/5"
+                )}>
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* ========================================================
-         Modals
-         ======================================================== */}
-      <UserSearchModal
-        open={showUserSearch}
-        onClose={() => setShowUserSearch(false)}
-        onSelect={(u) => {
-          toast(`Added ${u.displayName} to conversation`, "success");
-          setShowUserSearch(false);
-        }}
-      />
-      <MoreOptionsMenu
-        open={showMoreOptions}
-        onClose={() => setShowMoreOptions(false)}
-        onClearChat={() => {
-          setMessages([]);
-          toast("Chat cleared", "info");
-        }}
-        onMute={() => {
-          toast("Notifications muted", "info");
-        }}
-        onLeaveGroup={() => {
-          toast("Left the group", "info");
-          setActiveId(null);
-          setShowMoreOptions(false);
-        }}
-      />
+          {/* Conversation List */}
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {filteredConversations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center text-slate-500">
+                <MessageSquarePlus className="h-10 w-10 mb-2 opacity-30" />
+                <p className="text-sm">No conversations yet</p>
+                <button onClick={handleNewChat} className="mt-3 text-xs text-cyan-400 underline hover:text-cyan-300">Start a new chat</button>
+              </div>
+            ) : (
+              filteredConversations.map((conv) => {
+                const isActive = conv.id === activeId;
+                const unread = conv.unreadCount > 0;
+                return (
+                  <button key={conv.id} onClick={() => {
+                    setActiveId(conv.id);
+                    setMessages(conv.id === "conv_general_community" ? MOCK_MESSAGES : []);
+                  }} className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
+                    isActive ? "bg-cyan-500/15 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]" : "hover:bg-white/5 border border-transparent"
+                  )}
+                >
+                  <div className="relative h-10 w-10 shrink-0">
+                    <img src={conv.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=06b6d4&color=fff"} alt={conv.title || "Conversation"} className="h-full w-full rounded-full object-cover border border-white/10" />
+                    {unread && <div className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium text-sm text-white truncate">{conv.title || conv.other?.displayName || "Unknown"}</h3>
+                      <span className="text-[10px] text-slate-500">{new Date(conv.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <p className="text-xs text-slate-400 truncate">{conv.lastMessage?.text || "No messages yet"}</p>
+                      {unread && <span className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-black">{conv.unreadCount > 9 ? "9+" : conv.unreadCount}</span>}
+                    </div>
+                  </div>
+                </button>
+              )
+            }
+            ))}
+          </div>
+
+          {/* Bottom profile */}
+          <div className="p-3 border-t border-white/10">
+            <div className="flex items-center gap-3 cursor-pointer hover:bg-white/5 rounded-xl p-2 transition-colors">
+              <Avatar user={user} size={32} />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-sm text-white truncate">{user.displayName}</h3>
+                <p className="text-xs text-slate-400 truncate">{user.username}</p>
+              </div>
+              <MoreVertical className="h-4 w-4 text-slate-500" />
+            </div>
+          </div>
+        </aside>
+
+        {/* MAIN — Chat / Stories Feed */}
+        <main className="flex-1 flex flex-col min-w-0 bg-[#050505]/80 backdrop-blur-sm">
+          {/* Header */}
+          <header className="flex h-16 shrink-0 items-center justify-between bg-[#0a0a0c]/30 border-b border-white/5 px-6">
+            <div className="flex items-center gap-3">
+              {activeConversation ? (
+                <>
+                  <div className="relative h-10 w-10 shrink-0">
+                    <img src={activeConversation.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=06b6d4&color=fff"} alt={activeConversation.title || "Conversation"} className="h-full w-full rounded-full object-cover border border-white/10" />
+                    <span className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />
+                  </div>
+                  <div>
+                    <h2 className="font-medium text-sm text-white">{activeConversation.title || "Conversation"}</h2>
+                    <p className="text-xs text-slate-400">{activeConversation.participantCount} members · Active</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center text-slate-400">
+                    <UserRound className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="font-medium text-sm text-white">Select a conversation</h2>
+                    <p className="text-xs text-slate-400">Start a new chat or pick one from the sidebar</p>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {activeConversation?.title !== "Relay Assistant" ? (
+                <>
+                  <button ref={moreOptionsRef} onClick={(e) => { e.stopPropagation(); setShowMoreOptions((prev) => !prev); }} className="relative inline-block p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="More options">
+                    <MoreVertical className="h-5 w-5" />
+                  </button>
+                  <button onClick={() => handleStartCall("audio")} className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Start audio call"><Phone className="h-5 w-5" /></button>
+                  <button onClick={() => handleStartCall("video")} className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Start video call"><Video className="h-5 w-5" /></button>
+                </>
+              ) : (
+                <button ref={moreOptionsRef} onClick={(e) => { e.stopPropagation(); setShowMoreOptions((prev) => !prev); }} className="relative inline-block p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="More options">
+                  <MoreVertical className="h-5 w-5" />
+                </button>
+              )}
+              {showMoreOptions && (
+                <MoreOptionsMenu open={true} onClose={() => setShowMoreOptions(false)} onClearChat={handleClearChat} onMute={handleMute} onLeaveGroup={() => { toast("Left the group", "info"); setActiveId(null); setShowMoreOptions(false); }} />
+              )}
+            </div>
+          </header>
+
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {activeConversation ? (
+              <>
+                {visibleMessages.length > 0 ? (
+                  visibleMessages.map((msg) => <MessageBubble key={msg.id} message={msg} isMe={msg.senderId === "usr_me"} />)
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-center text-slate-500 pt-20">
+                    <p className="text-sm mb-2">No messages yet</p>
+                    <p className="text-xs">Start the conversation by sending a message below.</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center text-slate-600 pt-20">
+                <MessageSquarePlus className="h-12 w-12 mb-3 opacity-20" />
+                <h3 className="font-medium text-sm text-slate-400">Select a conversation to start messaging</h3>
+                <p className="text-xs text-slate-500 mt-1">Pick a thread from the sidebar or create a new one.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Message Input Bar */}
+          <form onSubmit={handleSend} className="p-4 border-t border-white/10 bg-[#0a0a0c]/40 backdrop-blur-xl">
+            <div className="flex items-end gap-2">
+              <label className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors cursor-pointer" aria-label="Attach file">
+                <Paperclip className="h-5 w-5" />
+                <input type="file" ref={setFileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,application/pdf" />
+              </label>
+              <button type="button" onClick={() => setShowEmojiPicker((prev) => !prev)} className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors relative" aria-label="Emoji picker">
+                <Smile className="h-5 w-5" />
+                {showEmojiPicker && <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />}
+              </button>
+              <div className="flex-1 relative">
+                <textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Type a message…" rows={1} maxRows={4} className="w-full bg-transparent text-sm text-white placeholder-slate-500 resize-none focus:outline-none scrollbar-hide" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(e); } }} />
+                {showEmojiPicker && (
+                  <div className="data-[emoji-picker] absolute bottom-[60px] left-0 w-full bg-[#0a0a0c]/90 border border-white/10 rounded-xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200 z-50">
+                    <div className="flex flex-wrap gap-1 max-h-48 overflow-y-auto">
+                      {EMOJIS.map((emoji) => (
+                        <button key={emoji} onClick={() => handleEmojiSelect(emoji)} className="h-8 w-8 rounded-lg text-lg hover:bg-white/5 transition-colors flex items-center justify-center" data-emoji-picker>{emoji}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {pendingAttachment && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 animate-in fade-in zoom-in duration-200">
+                  <ImageIcon className="h-4 w-4 text-cyan-400 shrink-0" />
+                  <span className="text-xs text-slate-300 truncate max-w-[120px]">{pendingAttachment.name}</span>
+                  <button onClick={handleRemoveAttachment} className="p-1 rounded hover:bg-white/10 text-slate-500 hover:text-rose-400 transition-colors" aria-label="Remove attachment"><X className="h-3 w-3" /></button>
+                </div>
+              )}
+              <button type="submit" disabled={(!draft.trim() && !pendingAttachment) || !activeId} className={cn("px-5 py-2.5 rounded-xl text-white font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed", (draft.trim() || pendingAttachment) && activeId ? "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-[0_0_15px_rgba(6,182,212,0.4)]" : "bg-white/5 border border-white/10 text-slate-400")}>
+                <Send className="h-5 w-5" />
+              </button>
+            </div>
+          </form>
+        </main>
+
+        {/* RIGHT — AI Copilot Panel */}
+        <CopilotBriefPanel activeConversation={activeConversation} messages={visibleMessages} onSummarize={() => {}} onExtractTasks={() => {}} />
+
+        {/* Call Overlay Modal */}
+        {isCalling && (
+          <CallOverlay open={isCalling} onClose={() => setIsCalling(false)} callType={callType} peer={{ name: activeConversation?.title || "Contact", avatarUrl: activeConversation?.other?.avatarUrl || "https://ui-avatars.com/api/?name=Contact&background=06b6d4&color=fff" }} />
+        )}
+      </div>
+
+      {/* Modals */}
+      <UserSearchModal open={showUserSearch} onClose={() => setShowUserSearch(false)} onSelect={(u) => { toast(`Added ${u.displayName} to conversation`, "success"); setShowUserSearch(false); }} />
     </div>
   );
 }
