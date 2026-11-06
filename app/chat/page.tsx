@@ -14,10 +14,11 @@ import {
   ArrowRight,
   Bell,
   Check,
+  ChevronDown,
   FileText,
-  History,
   Image as ImageIcon,
   Lock,
+  MessageCircle,
   MessageSquarePlus,
   Mic,
   MicOff,
@@ -38,15 +39,23 @@ import {
 import { cn } from "@/lib/utils";
 import type { Conversation, Message, User } from "@/lib/types";
 
-/* -------------------------------------------------------------------------
-   Mock data fallback — seeded when no conversations exist
-   ------------------------------------------------------------------------- */
+const WA_BG = "#0A0A0C";
+const WA_SIDEBAR = "#0F0F11";
+const WA_HEADER = "#0A0A0C";
+const WA_BORDER = "#2A2A2C";
+const WA_TEXT = "#FFFFFF";
+const WA_TEXT_MUTED = "#8E8E93";
+const WA_ACCENT = "#25D366";
+const WA_ACCENT_DARK = "#1E9E52";
+const WA_BUBBLE_SENT = "#25D366";
+const WA_BUBBLE_RECEIVED = "#1C1C1E";
+
 const MOCK_USER: User = {
   id: "usr_me",
   username: "alexmercer",
   displayName: "Alex Mercer",
   email: "alex@relay.pro",
-  accent: "cyan",
+  accent: "emerald",
   avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
   online: true,
   lastSeen: new Date().toISOString(),
@@ -196,13 +205,13 @@ const MOCK_MESSAGES: Message[] = [
       online: true,
     },
     kind: "text",
-    text: "Welcome to Relay Messenger Pro! The glassmorphic workspace is now live.",
+    text: "Welcome to Relay Messenger Pro! The spatial glassmorphic architecture is fully active.",
     attachment: null,
     anonymous: false,
     ephemeral: false,
     viewOnce: false,
     viewOnceOpened: false,
-    reactions: { "🔥": 5 },
+    reactions: { "🔥": 3 },
     readBy: ["usr_me"],
     starred: false,
     createdAt: new Date(Date.now() - 900000).toISOString(),
@@ -226,9 +235,6 @@ const MOCK_MESSAGES: Message[] = [
   },
 ];
 
-/* -------------------------------------------------------------------------
-   Simple emoji list for the picker
-   ------------------------------------------------------------------------- */
 const EMOJIS = [
   "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🥲", "😊", "😇", "🙂", "🙃", "😉",
   "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗",
@@ -236,19 +242,15 @@ const EMOJIS = [
   "😮", "😯", "😲", "🥳", "😵", "🤯", "😇", "🙏", "🫶", "🤝", "👋", "🤚", "🖐", "✋",
 ];
 
-/* -------------------------------------------------------------------------
-   Subcomponents
-   ------------------------------------------------------------------------- */
-
-function Avatar({ user, size = 40 }: { user: User; size?: number }) {
+function Avatar({ user, size = 38 }: { user: User; size?: number }) {
   return (
     <div className={`relative h-${size / 4} w-${size / 4} shrink-0`}>
       <img
-        src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName)}&background=06b6d4&color=fff`}
+        src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName)}&background=25D366&color=fff`}
         alt={user.displayName}
-        className="h-full w-full rounded-full object-cover border-2 border-white/20"
+        className="h-full w-full rounded-full object-cover border border-white/10"
       />
-      <span className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-black bg-emerald-500"></span>
+      <span className="absolute -bottom-1 -right-1 h-2.5 w-2.5 rounded-full border-2 border-black bg-[#25D366]" />
     </div>
   );
 }
@@ -264,31 +266,32 @@ function MessageBubble({ message, isMe }: { message: Message; isMe: boolean }) {
       )}
     >
       {!isMe && (
-        <div className="h-8 w-8 rounded-full bg-white/5 flex items-center justify-center text-[10px] text-slate-300 border border-white/10 overflow-hidden">
+        <div className="h-7 w-7 rounded-full bg-white/5 flex items-center justify-center text-[9px] text-[#8E8E93] border border-white/10 overflow-hidden shrink-0">
           {message.sender.displayName.charAt(0).toUpperCase()}
         </div>
       )}
       <div
         className={cn(
-          "rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap break-words shadow-sm relative",
+          "rounded-xl px-4 py-2.5 text-sm whitespace-pre-wrap break-words relative",
           isMe
-            ? "bg-cyan-600 text-white rounded-tr-none"
-            : "bg-white/5 border border-white/10 text-slate-200 rounded-tl-none"
+            ? `bg-[#25D366] text-[#FFFFFF] rounded-tr-none`
+            : `bg-[#1C1C1E] border border-[#2A2A2C] text-[#FFFFFF] rounded-tl-none`
         )}
       >
         {message.text}
         {message.attachment && (
           <div className="mt-2 flex items-center gap-2">
-            <ImageIcon className="h-4 w-4 text-slate-400" />
-            <span className="text-[10px] text-slate-300">{message.attachment.name}</span>
+            <ImageIcon className="h-4 w-4 text-[#8E8E93]" />
+            <span className="text-[10px] text-[#8E8E93]">{message.attachment.name}</span>
           </div>
         )}
-        <div className={`text-[10px] mt-1 text-right ${isMe ? "text-cyan-200/70" : "text-slate-400/70"}`}>
+        <div className={`text-[10px] mt-1 text-right flex items-end gap-1 ${isMe ? "text-[#8E8E93]" : "text-[#8E8E93]"}`}>
           {time}
+          <Check className={`h-3 w-3 mt-[2px] ${isMe && message.readBy?.includes("usr_me") ? "text-[#25D366]" : "text-[#8E8E93]"}`} />
         </div>
       </div>
       {isMe && (
-        <div className="h-8 w-8 rounded-full bg-white/5 flex items-center justify-center text-[10px] text-slate-300 border border-white/10 overflow-hidden">
+        <div className="h-7 w-7 rounded-full bg-white/5 flex items-center justify-center text-[9px] text-[#8E8E93] border border-white/10 overflow-hidden shrink-0">
           {MOCK_USER.displayName.charAt(0).toUpperCase()}
         </div>
       )}
@@ -339,15 +342,14 @@ function CopilotBriefPanel({
 
   const handleAiSend = useCallback(async () => {
     if (!aiInput.trim()) return;
-    const userMsg = aiInput;
-    setAiMessages((prev) => [...prev, { role: "user", text: userMsg }]);
+    setAiMessages((prev) => [...prev, { role: "user", text: aiInput }]);
     setAiInput("");
     setLoading(true);
     try {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg }),
+        body: JSON.stringify({ message: aiInput }),
       });
       const data = await res.json();
       const aiText = data.response || "I'm having trouble responding right now. Please try again.";
@@ -361,20 +363,17 @@ function CopilotBriefPanel({
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
-      {/* Header */}
-      <div className="flex h-16 shrink-0 items-center justify-between bg-[#0a0a0c]/30 border-b border-white/5 px-4">
+      <div className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C]/30 border-b border-[#2A2A2C] px-4">
         <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold">
+          <div className="h-6 w-6 rounded-full bg-gradient-to-r from-[#25D366] to-[#1E9E52] flex items-center justify-center text-white text-[10px] font-bold">
             AI
           </div>
-          <span className="font-semibold text-sm text-white">Relay Copilot</span>
+          <span className="font-semibold text-sm text-white">Relay AI</span>
         </div>
-        <button className="p-1.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Close">
+        <button className="p-1.5 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors" aria-label="Close">
           <X className="h-4 w-4" />
         </button>
       </div>
-
-      {/* AI Chat History */}
       <div className="flex-1 overflow-y-auto p-2 space-y-3">
         {aiMessages.map((msg, i) => (
           <div
@@ -382,24 +381,22 @@ function CopilotBriefPanel({
             className={cn(
               "max-w-[80%] rounded-xl px-3 py-2 text-xs whitespace-pre-wrap break-words",
               msg.role === "user"
-                ? "ml-auto bg-cyan-600 text-white rounded-tr-none"
-                : "mr-auto bg-white/5 border border-white/10 text-slate-200 rounded-tl-none"
+                ? "ml-auto bg-[#25D366] text-[#FFFFFF] rounded-tr-none"
+                : "mr-auto bg-[#1C1C1E] border border-[#2A2A2C] text-[#FFFFFF] rounded-tl-none"
             )}
           >
             {msg.text}
           </div>
         ))}
       </div>
-
-      {/* AI Input */}
-      <div className="border-t border-white/10 pt-3 bg-[#0a0a0c]/20 backdrop-blur-sm">
+      <div className="border-t border-[#2A2A2C] pt-3 bg-[#0A0A0C]/20 backdrop-blur-sm">
         <div className="flex items-end gap-2 p-2">
           <input
             type="text"
             value={aiInput}
             onChange={(e) => setAiInput(e.target.value)}
             placeholder="Ask Relay AI anything…"
-            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+            className="flex-1 bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl px-3 py-2 text-sm text-[#FFFFFF] placeholder-[#8E8E93] focus:outline-none focus:border-[#25D366] transition-all"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -411,10 +408,10 @@ function CopilotBriefPanel({
             onClick={handleAiSend}
             disabled={!aiInput.trim()}
             className={cn(
-              "p-2 rounded-xl text-white font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed",
+              "p-2 rounded-xl text-[#FFFFFF] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed",
               aiInput.trim()
-                ? "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500"
-                : "bg-white/5 border border-white/10 text-slate-400"
+                ? "bg-[#25D366] hover:bg-[#1E9E52]"
+                : "bg-[#1C1C1E] border border-[#2A2A2C] text-[#8E8E93]"
             )}
             aria-label="Send AI message"
           >
@@ -422,31 +419,29 @@ function CopilotBriefPanel({
           </button>
         </div>
       </div>
-
-      {/* Brief */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-        <h3 className="font-semibold text-xs text-white mb-2">Active Conversation Brief</h3>
+      <div className="bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl p-3">
+        <h3 className="font-semibold text-xs text-[#FFFFFF] mb-2">Active Conversation Brief</h3>
         {loading ? (
           <div className="flex flex-col gap-2">
-            <div className="h-3 w-1/2 bg-white/10 rounded animate-pulse" />
-            <div className="h-3 w-1/3 bg-white/10 rounded animate-pulse" />
+            <div className="h-3 w-1/2 bg-[#2A2A2C] rounded animate-pulse" />
+            <div className="h-3 w-1/3 bg-[#2A2A2C] rounded animate-pulse" />
           </div>
         ) : null}
         {!loading && activeConversation && summary ? (
           <div className="space-y-3">
             <div className="flex items-start gap-2">
-              <div className="h-2 w-2 rounded-full bg-emerald-500 mt-1" />
-              <div className="text-xs text-slate-300 leading-relaxed">
-                <span className="font-medium text-white">Summary:</span> {summary}
+              <div className="h-2 w-2 rounded-full bg-[#25D366] mt-1" />
+              <div className="text-xs text-[#8E8E93] leading-relaxed">
+                <span className="font-medium text-[#FFFFFF]">Summary:</span> {summary}
               </div>
             </div>
             {tasks.length > 0 && (
               <div>
-                <p className="text-[10px] font-medium text-slate-400 mb-1">Action Items:</p>
+                <p className="text-[10px] font-medium text-[#8E8E93] mb-1">Action Items:</p>
                 <ul className="space-y-1">
                   {tasks.map((task, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-slate-200">
-                      <Check className="h-3 w-3 mt-0.5 text-cyan-400 shrink-0" />
+                    <li key={i} className="flex items-start gap-2 text-xs text-[#FFFFFF]">
+                      <Check className="h-3 w-3 mt-[2px] text-[#25D366] shrink-0" />
                       <span>{task}</span>
                     </li>
                   ))}
@@ -458,40 +453,38 @@ function CopilotBriefPanel({
         {!loading && activeConversation && !summary ? (
           <div className="space-y-3">
             <div className="flex items-start gap-2">
-              <div className="h-2 w-2 rounded-full bg-emerald-500 mt-1" />
-              <div className="text-xs text-slate-300 leading-relaxed">
-                <span className="font-medium text-white">Summary:</span> Active discussion on Relay glassmorphic architecture and WebRTC scaling.
+              <div className="h-2 w-2 rounded-full bg-[#25D366] mt-1" />
+              <div className="text-xs text-[#8E8E93] leading-relaxed">
+                <span className="font-medium text-[#FFFFFF]">Summary:</span> Active discussion on Relay glassmorphic architecture and WebRTC scaling.
               </div>
             </div>
             <div className="flex items-start gap-2">
-              <div className="h-2 w-2 rounded-full bg-cyan-500 mt-1" />
-              <div className="text-xs text-slate-300 leading-relaxed">
-                <span className="font-medium text-white">Action Items:</span> Review deployment logs on Vercel production dashboard.
+              <div className="h-2 w-2 rounded-full bg-[#25D366] mt-1" />
+              <div className="text-xs text-[#8E8E93] leading-relaxed">
+                <span className="font-medium text-[#FFFFFF]">Action Items:</span> Review deployment logs on Vercel production dashboard.
               </div>
             </div>
             <div className="flex items-start gap-2">
-              <div className="h-2 w-2 rounded-full bg-rose-500 mt-1" />
-              <div className="text-xs text-slate-300 leading-relaxed">
-                <span className="font-medium text-white">Urgency:</span> Medium — respond within 24 hours.
+              <div className="h-2 w-2 rounded-full bg-[#25D366] mt-1" />
+              <div className="text-xs text-[#8E8E93] leading-relaxed">
+                <span className="font-medium text-[#FFFFFF]">Urgency:</span> Medium — respond within 24 hours.
               </div>
             </div>
           </div>
         ) : null}
         {!loading && !activeConversation ? (
-          <div className="text-xs text-slate-500 italic">Select a conversation to see AI-powered insights.</div>
+          <div className="text-xs text-[#8E8E93] italic">Select a conversation to see AI-powered insights.</div>
         ) : null}
       </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-        <h3 className="font-semibold text-xs text-white mb-2">Quick Actions</h3>
+      <div className="bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl p-3">
+        <h3 className="font-semibold text-xs text-[#FFFFFF] mb-2">Quick Actions</h3>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={handleSummarize}
             disabled={loading}
             className={cn(
               "px-3 py-2 rounded-lg text-xs font-medium transition-all",
-              loading ? "bg-white/5 text-slate-400 cursor-not-allowed" : "bg-white/10 border border-white/10 text-cyan-300 hover:bg-white/20 hover:text-white"
+              loading ? "bg-[#1C1C1E] text-[#8E8E93] cursor-not-allowed" : "bg-[#2A2A2C] border border-[#2A2A2C] text-[#25D366] hover:bg-[#2A2A2C]/50"
             )}
           >
             Summarize thread
@@ -501,23 +494,21 @@ function CopilotBriefPanel({
             disabled={loading}
             className={cn(
               "px-3 py-2 rounded-lg text-xs font-medium transition-all",
-              loading ? "bg-white/5 text-slate-400 cursor-not-allowed" : "bg-white/10 border border-white/10 text-cyan-300 hover:bg-white/20 hover:text-white"
+              loading ? "bg-[#1C1C1E] text-[#8E8E93] cursor-not-allowed" : "bg-[#2A2A2C] border border-[#2A2A2C] text-[#25D366] hover:bg-[#2A2A2C]/50"
             )}
           >
             Extract tasks
           </button>
         </div>
       </div>
-
-      {/* AI Assistant footer */}
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4 border-t border-[#2A2A2C]">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xs font-bold">
+          <div className="h-8 w-8 rounded-full bg-[#25D366]/20 flex items-center justify-center text-[#25D366] text-xs font-bold">
             A
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-sm text-white">Relay AI</h3>
-            <p className="text-xs text-slate-400">Online · Ready to help</p>
+            <h3 className="font-medium text-sm text-[#FFFFFF]">Relay AI</h3>
+            <p className="text-xs text-[#8E8E93]">Online · Ready to help</p>
           </div>
         </div>
       </div>
@@ -548,42 +539,42 @@ function UserSearchModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#0a0a0c]/90 border border-white/10 rounded-2xl p-6 shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
+      <div className="bg-[#0A0A0C] border border-[#2A2A2C] rounded-2xl p-6 shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-white">Add Participants</h2>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Close">
+          <h2 className="font-semibold text-[#FFFFFF]">Add Participants</h2>
+          <button onClick={onClose} className="p-1 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8E8E93]" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search users…"
-            className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+            className="w-full pl-10 pr-4 py-2 bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl text-sm text-[#FFFFFF] placeholder-[#8E8E93] focus:outline-none focus:border-[#25D366] transition-all"
             autoFocus
           />
         </div>
         <div className="flex flex-col gap-1">
           {filtered.length === 0 ? (
-            <p className="text-xs text-slate-500 text-center py-4">No users found</p>
+            <p className="text-xs text-[#8E8E93] text-center py-4">No users found</p>
           ) : (
             filtered.map((u) => (
               <button
                 key={u.id}
                 onClick={() => { onSelect(u); onClose(); }}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#2A2A2C] transition-colors"
               >
-                <div className="h-9 w-9 rounded-full overflow-hidden border border-white/10 shrink-0">
-                  <img src={u.avatarUrl || "https://ui-avatars.com/api/?name=User&background=06b6d4&color=fff"} alt={u.displayName} className="h-full w-full object-cover" />
+                <div className="h-9 w-9 rounded-full overflow-hidden border border-[#2A2A2C] shrink-0">
+                  <img src={u.avatarUrl || "https://ui-avatars.com/api/?name=User&background=25D366&color=fff"} alt={u.displayName} className="h-full w-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-sm text-white truncate">{u.displayName}</h3>
-                  <p className="text-xs text-slate-400 truncate">{u.username}</p>
+                  <h3 className="font-medium text-sm text-[#FFFFFF] truncate">{u.displayName}</h3>
+                  <p className="text-xs text-[#8E8E93] truncate">{u.username}</p>
                 </div>
-                <span className={`h-2 w-2 rounded-full ${u.online ? "bg-emerald-500" : "bg-slate-500"}`} />
+                <span className={`h-2 w-2 rounded-full ${u.online ? "bg-[#25D366]" : "bg-[#8E8E93]"}`} />
               </button>
             ))
           )}
@@ -609,37 +600,37 @@ function MoreOptionsMenu({
   if (!open) return null;
 
   return (
-    <div className="absolute right-2 top-12 w-48 z-50 bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl py-1 text-sm text-neutral-200 animate-in fade-in zoom-in duration-200">
+    <div className="absolute right-2 top-12 w-48 z-50 bg-[#0A0A0C] border border-[#2A2A2C] rounded-xl shadow-2xl py-1 text-sm text-[#FFFFFF] animate-in fade-in zoom-in duration-200">
       {onClearChat && (
         <button
           onClick={() => { onClearChat(); onClose(); }}
-          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-neutral-200 hover:bg-white/5 transition-colors"
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-[#FFFFFF] hover:bg-[#2A2A2C] transition-colors"
         >
-          <FileText className="h-4 w-4 text-neutral-400 shrink-0" />
+          <FileText className="h-4 w-4 text-[#8E8E93] shrink-0" />
           <span>Clear chat history</span>
         </button>
       )}
       {onMute && (
         <button
           onClick={() => { onMute(); onClose(); }}
-          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-neutral-200 hover:bg-white/5 transition-colors"
+          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-[#FFFFFF] hover:bg-[#2A2A2C] transition-colors"
         >
-          <Bell className="h-4 w-4 text-neutral-400 shrink-0" />
+          <Bell className="h-4 w-4 text-[#8E8E93] shrink-0" />
           <span>Mute notifications</span>
         </button>
       )}
       <button
         onClick={() => { onLeaveGroup?.(); onClose(); }}
-        className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-rose-400 hover:bg-rose-500/10 transition-colors"
+        className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-[#FF3B30] hover:bg-[#FF3B30]/10 transition-colors"
       >
-        <Lock className="h-4 w-4 text-slate-500 shrink-0" />
+        <Lock className="h-4 w-4 text-[#8E8E93] shrink-0" />
         <span>Leave group</span>
       </button>
       <button
         onClick={onClose}
-        className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-neutral-200 hover:bg-white/5 transition-colors"
+        className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs text-[#FFFFFF] hover:bg-[#2A2A2C] transition-colors"
       >
-        <X className="h-4 w-4 text-neutral-400 shrink-0" />
+        <X className="h-4 w-4 text-[#8E8E93] shrink-0" />
         <span>Cancel</span>
       </button>
     </div>
@@ -671,12 +662,10 @@ function CallOverlay({
       return;
     }
 
-    // Simulate incoming call connecting after 2 seconds
     const timer = setTimeout(() => {
       setConnected(true);
     }, 2000);
 
-    // Start duration timer once connected
     const durationInterval = setInterval(() => {
       if (connected) setCallDuration((prev) => prev + 1);
     }, 1000);
@@ -696,12 +685,11 @@ function CallOverlay({
   };
 
   const peerName = peer?.name || "Contact";
-  const peerAvatar = peer?.avatarUrl || "https://ui-avatars.com/api/?name=User&background=06b6d4&color=fff";
+  const peerAvatar = peer?.avatarUrl || "https://ui-avatars.com/api/?name=User&background=25D366&color=fff";
 
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="w-full max-w-md h-[70vh] bg-[#0a0a0c]/95 border border-white/10 rounded-3xl shadow-2xl flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
-        {/* Avatar with pulsing ring */}
+      <div className="w-full max-w-md h-[70vh] bg-[#0A0A0C]/95 border border-[#2A2A2C] rounded-3xl shadow-2xl flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
         <div className="relative mb-6">
           <div
             className={`absolute -inset-1 rounded-full border-2 ${connected ? "border-emerald-500" : "border-cyan-500"} animate-pulse`}
@@ -714,24 +702,18 @@ function CallOverlay({
             />
           </div>
         </div>
-
-        {/* Contact name */}
         <h2 className="text-xl font-bold text-white">{peerName}</h2>
         <p className="text-slate-400 text-sm mb-6">{connected ? "Connected" : "Calling…"}</p>
-
-        {/* Duration */}
         {connected && (
-          <div className="mb-8 text-[18px] font-mono text-white">
+          <div className="mb-10 text-[18px] font-mono text-white">
             {formatTime(callDuration)}
           </div>
         )}
-
-        {/* Controls */}
         <div className="flex items-center gap-4">
           {callType === "video" && (
             <button
               onClick={() => setCameraOff((prev) => !prev)}
-              className={cn("p-3 rounded-full bg-white/5 transition-colors", cameraOff ? "text-slate-400" : "text-white")}
+              className={cn("p-3 rounded-full bg-[#1C1C1E] transition-colors", cameraOff ? "text-[#8E8E93]" : "text-white")}
               aria-label={cameraOff ? "Enable camera" : "Disable camera"}
             >
               <VideoOff className="h-5 w-5" />
@@ -739,47 +721,36 @@ function CallOverlay({
           )}
           <button
             onClick={() => setMuted((prev) => !prev)}
-            className={cn("p-3 rounded-full bg-white/5 transition-colors", muted ? "text-slate-400" : "text-white")}
+            className={cn("p-3 rounded-full bg-[#1C1C1E] transition-colors", muted ? "text-[#8E8E93]" : "text-white")}
             aria-label={muted ? "Unmute" : "Mute"}
           >
             {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
           </button>
           <button
             onClick={onClose}
-            className="p-3 rounded-full bg-rose-600 hover:bg-rose-500 text-white transition-colors shadow-lg shadow-rose-600/30"
+            className="p-3 rounded-full bg-[#FF3B30] hover:bg-[#E03425] text-[#FFFFFF] transition-colors shadow-lg shadow-[#FF3B30]/30"
             aria-label="End call"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
-
-        {/* End hint */}
-        <p className="mt-6 text-xs text-slate-500">Tap to end call</p>
+        <p className="mt-6 text-xs text-[#8E8E93]">Tap to end call</p>
       </div>
     </div>
   );
 }
-
-/* -------------------------------------------------------------------------
-   Main Chat Page
-   ------------------------------------------------------------------------- */
 
 export default function ChatPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, token, loading } = useAuth();
 
-  // -----------------------------------------------------------------
-  // State
-  // -----------------------------------------------------------------
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread" | "favorites" | "groups">("all");
-
-  // Mobile navigation state
   const [activeMobileView, setActiveMobileView] = useState<"LIST" | "CHAT" | "COPILOT">("LIST");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showUserSearch, setShowUserSearch] = useState(false);
@@ -787,22 +758,15 @@ export default function ChatPage() {
   const [fileInputRef, setFileInputRef] = useState<HTMLInputElement | null>(null);
   const [moreOptionsRef, setMoreOptionsRef] = useState<HTMLButtonElement | null>(null);
   const [pendingAttachment, setPendingAttachment] = useState<{ name: string; url: string; size: number } | null>(null);
-
-  // Call state
   const [isCalling, setIsCalling] = useState(false);
   const [callType, setCallType] = useState<"audio" | "video">("audio");
 
-  // -----------------------------------------------------------------
-  // Effects
-  // -----------------------------------------------------------------
   useEffect(() => {
     if (loading) return;
     if (!user || !token) {
       router.replace("/login");
       return;
     }
-
-    // Seed mock data if API returns empty (for immediate UI feedback)
     setTimeout(() => {
       if (conversations.length === 0) {
         setConversations(MOCK_CONVERSATIONS);
@@ -812,7 +776,6 @@ export default function ChatPage() {
     }, 100);
   }, [loading, user, token, router, conversations.length]);
 
-  // Close emoji picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (showEmojiPicker && !e.target.closest('[data-emoji-picker]')) {
@@ -823,7 +786,6 @@ export default function ChatPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showEmojiPicker]);
 
-  // Close more options menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (showMoreOptions && moreOptionsRef.current && !moreOptionsRef.current.contains(e.target as Node)) {
@@ -834,9 +796,6 @@ export default function ChatPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showMoreOptions, moreOptionsRef]);
 
-  // -----------------------------------------------------------------
-  // Derived
-  // -----------------------------------------------------------------
   const activeConversation = conversations.find((c) => c.id === activeId);
   const visibleMessages = messages.filter((m) => m.conversationId === activeId);
 
@@ -856,14 +815,10 @@ export default function ChatPage() {
     });
   }, [conversations, searchQuery, filter]);
 
-  // -----------------------------------------------------------------
-  // Handlers
-  // -----------------------------------------------------------------
   const handleSend = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     const text = draft.trim();
     if (!text && !pendingAttachment) return;
-
     const newMessage: Message = {
       id: `msg_${Date.now()}`,
       conversationId: activeId || "conv_general_community",
@@ -881,12 +836,10 @@ export default function ChatPage() {
       starred: false,
       createdAt: new Date().toISOString(),
     };
-
     setMessages((prev) => [...prev, newMessage]);
     setDraft("");
     setPendingAttachment(null);
     setShowEmojiPicker(false);
-
     setConversations((prev) =>
       prev.map((c) =>
         c.id === (activeId || "conv_general_community")
@@ -948,39 +901,32 @@ export default function ChatPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0A0A0C] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 border-2 border-white/30 border-t-cyan-500 rounded-full animate-spin" />
-          <p className="text-slate-400 text-xs">Loading Relay…</p>
+          <div className="h-8 w-8 border-2 border-[#8E8E93] border-t-[#25D366] rounded-full animate-spin" />
+          <p className="text-xs text-[#8E8E93]">Loading Relay…</p>
         </div>
       </div>
     );
   }
 
   if (!user || !token) {
-    return null; // redirect handled by effect
+    return null;
   }
 
-  const isMobile = true; // We use Tailwind breakpoints for actual detection
-
   return (
-    <div className="h-screen bg-[#050505] text-slate-100 overflow-hidden">
-      {/* ========================================================
-         MOBILE VIEW (md:hidden)
-         ======================================================== */}
+    <div className="h-screen bg-[#0A0A0C] text-[#FFFFFF] overflow-hidden">
       <div className="md:hidden flex h-screen flex-col">
-        {/* Mobile List View */}
         {activeMobileView === "LIST" && (
           <>
-            {/* Mobile Header */}
-            <header className="flex h-16 shrink-0 items-center justify-between bg-[#0a0a0c]/30 border-b border-white/5 px-4 z-20">
+            <header className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-4 z-20">
               <div className="flex items-center gap-2">
-                <Logo className="h-8 w-8 text-cyan-400" compact />
-                <span className="font-bold text-lg tracking-tight text-white">Relay</span>
+                <Logo className="h-8 w-8 text-[#25D366]" compact />
+                <span className="font-medium text-sm text-[#FFFFFF] tracking-tight">Relay</span>
               </div>
               <div className="flex items-center gap-2">
-                <Search className="h-5 w-5 text-slate-400" />
-                <button className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Camera">
+                <Search className="h-5 w-5 text-[#8E8E93]" />
+                <button className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors" aria-label="Camera">
                   <Play className="h-5 w-5" />
                 </button>
                 <button
@@ -989,7 +935,7 @@ export default function ChatPage() {
                     e.stopPropagation();
                     setShowMoreOptions((prev) => !prev);
                   }}
-                  className="relative inline-block p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+                  className="relative inline-block p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors"
                   aria-label="More options"
                 >
                   <MoreVertical className="h-5 w-5" />
@@ -1009,16 +955,14 @@ export default function ChatPage() {
                 )}
               </div>
             </header>
-
-            {/* Conversation List */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            <div className="flex-1 overflow-y-auto px-2 space-y-1">
               {filteredConversations.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center text-slate-500">
+                <div className="flex flex-col items-center justify-center py-20 text-center text-[#8E8E93]">
                   <MessageSquarePlus className="h-10 w-10 mb-2 opacity-30" />
                   <p className="text-sm">No conversations yet</p>
                   <button
                     onClick={handleNewChat}
-                    className="mt-3 text-xs text-cyan-400 underline hover:text-cyan-300"
+                    className="mt-3 text-xs text-[#25D366] underline hover:text-[#1E9E52]"
                   >
                     Start a new chat
                   </button>
@@ -1038,35 +982,35 @@ export default function ChatPage() {
                         setActiveMobileView("CHAT");
                       }}
                       className={cn(
-                        "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
+                        "flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200",
                         isActive
-                          ? "bg-cyan-500/15 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
-                          : "hover:bg-white/5 border border-transparent"
+                          ? "bg-[#25D366]/10 border border-[#25D366] shadow-[0_0_15px_rgba(37,211,102,0.15)]"
+                          : "hover:bg-[#2A2A2C] border border-transparent"
                       )}
                     >
                       <div className="relative h-10 w-10 shrink-0">
                         <img
-                          src={conv.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=06b6d4&color=fff"}
+                          src={conv.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=25D366&color=fff"}
                           alt={conv.title || "Conversation"}
-                          className="h-full w-full rounded-full object-cover border border-white/10"
+                          className="h-full w-full rounded-full object-cover border border-[#2A2A2C]"
                         />
                         {unread && (
-                          <div className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />
+                          <div className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] border-2 border-black" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-medium text-sm text-white truncate">
+                          <h3 className="font-medium text-sm text-[#FFFFFF] truncate">
                             {conv.title || conv.other?.displayName || "Unknown"}
                           </h3>
-                          <span className="text-[10px] text-slate-500">
+                          <span className="text-[10px] text-[#8E8E93]">
                             {new Date(conv.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
                         <div className="flex items-center gap-1 mt-0.5">
-                          <p className="text-xs text-slate-400 truncate">{conv.lastMessage?.text || "No messages yet"}</p>
+                          <p className="text-xs text-[#8E8E93] truncate">{conv.lastMessage?.text || "No messages yet"}</p>
                           {unread && (
-                            <span className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-black">
+                            <span className="h-5 w-5 rounded-full bg-[#25D366] flex items-center justify-center text-[10px] font-bold text-[#000000]">
                               {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
                             </span>
                           )}
@@ -1079,64 +1023,57 @@ export default function ChatPage() {
             </div>
           </>
         )}
-
-        {/* Mobile Chat View */}
         {activeMobileView === "CHAT" && (
           <>
-            {/* Mobile Chat Header */}
-            <header className="flex h-16 shrink-0 items-center justify-between bg-[#0a0a0c]/30 border-b border-white/5 px-4 z-20">
+            <header className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-4 z-20">
               <button
                 onClick={openList}
-                className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Back"
+                className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors" aria-label="Back"
               >
                 <ArrowRight className="h-5 w-5 rotate-180" />
               </button>
               <div className="flex items-center gap-3">
                 <div className="relative h-10 w-10 shrink-0">
                   <img
-                    src={activeConversation?.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=06b6d4&color=fff"}
+                    src={activeConversation?.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=25D366&color=fff"}
                     alt={activeConversation?.title || "Conversation"}
-                    className="h-full w-full rounded-full object-cover border border-white/10"
+                    className="h-full w-full rounded-full object-cover border border-[#2A2A2C]"
                   />
-                  <span className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />
+                  <span className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] border-2 border-black" />
                 </div>
                 <div>
-                  <h2 className="font-medium text-sm text-white">{activeConversation?.title || "Conversation"}</h2>
-                  <p className="text-xs text-slate-400">{activeConversation?.participantCount} members · Active</p>
+                  <h2 className="font-medium text-sm text-[#FFFFFF]">{activeConversation?.title || "Conversation"}</h2>
+                  <p className="text-xs text-[#8E8E93]">{activeConversation?.participantCount} members · Active</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => setActiveMobileView("COPILOT")} className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="AI Copilot">
+                <button onClick={() => setActiveMobileView("COPILOT")} className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors" aria-label="AI Copilot">
                   <ShieldCheck className="h-5 w-5" />
                 </button>
-                <button className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Call">
+                <button className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors" aria-label="Call">
                   <Phone className="h-5 w-5" />
                 </button>
-                <button className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Video">
+                <button className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors" aria-label="Video">
                   <Video className="h-5 w-5" />
                 </button>
               </div>
             </header>
-
-            {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {visibleMessages.length > 0 ? (
                 visibleMessages.map((msg) => (
                   <MessageBubble key={msg.id} message={msg} isMe={msg.senderId === "usr_me"} />
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center text-slate-500 pt-20">
+                <div className="flex flex-col items-center justify-center h-full text-center text-[#8E8E93] pt-20">
                   <p className="text-sm mb-2">No messages yet</p>
                   <p className="text-xs">Start the conversation by sending a message below.</p>
                 </div>
               )}
             </div>
-
-            {/* Message Input Bar */}
-            <form onSubmit={handleSend} className="p-4 border-t border-white/10 bg-[#0a0a0c]/40 backdrop-blur-xl">
+            <form onSubmit={handleSend} className="p-4 border-t border-[#2A2A2C] bg-[#0A0A0C]/40 backdrop-blur-xl">
               <div className="flex items-end gap-2">
                 <label
-                  className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors cursor-pointer"
+                  className="p-2.5 rounded-xl text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors cursor-pointer"
                   aria-label="Attach file"
                 >
                   <Paperclip className="h-5 w-5" />
@@ -1151,12 +1088,12 @@ export default function ChatPage() {
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker((prev) => !prev)}
-                  className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors relative"
+                  className="p-2.5 rounded-xl text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors relative"
                   aria-label="Emoji picker"
                 >
                   <Smile className="h-5 w-5" />
                   {showEmojiPicker && (
-                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />
+                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] border-2 border-black" />
                   )}
                 </button>
                 <div className="flex-1 relative">
@@ -1166,7 +1103,7 @@ export default function ChatPage() {
                     placeholder="Type a message…"
                     rows={1}
                     maxRows={4}
-                    className="w-full bg-transparent text-sm text-white placeholder-slate-500 resize-none focus:outline-none scrollbar-hide"
+                    className="w-full bg-transparent text-sm text-[#FFFFFF] placeholder-[#8E8E93] resize-none focus:outline-none scrollbar-hide"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
@@ -1175,13 +1112,13 @@ export default function ChatPage() {
                     }}
                   />
                   {showEmojiPicker && (
-                    <div className="data-[emoji-picker] absolute bottom-[60px] left-0 w-full bg-[#0a0a0c]/90 border border-white/10 rounded-xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200 z-50">
+                    <div className="data-[emoji-picker] absolute bottom-[60px] left-0 w-full bg-[#0A0A0C] border border-[#2A2A2C] rounded-xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200 z-50">
                       <div className="flex flex-wrap gap-1 max-h-48 overflow-y-auto">
                         {EMOJIS.map((emoji) => (
                           <button
                             key={emoji}
                             onClick={() => handleEmojiSelect(emoji)}
-                            className="h-8 w-8 rounded-lg text-lg hover:bg-white/5 transition-colors flex items-center justify-center"
+                            className="h-8 w-8 rounded-lg text-lg hover:bg-[#2A2A2C] transition-colors flex items-center justify-center"
                             data-emoji-picker
                           >
                             {emoji}
@@ -1192,12 +1129,12 @@ export default function ChatPage() {
                   )}
                 </div>
                 {pendingAttachment && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 animate-in fade-in zoom-in duration-200">
-                    <ImageIcon className="h-4 w-4 text-cyan-400 shrink-0" />
-                    <span className="text-xs text-slate-300 truncate max-w-[120px]">{pendingAttachment.name}</span>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#2A2A2C] border border-[#2A2A2C] animate-in fade-in zoom-in duration-200">
+                    <ImageIcon className="h-4 w-4 text-[#25D366] shrink-0" />
+                    <span className="text-xs text-[#8E8E93] truncate max-w-[120px]">{pendingAttachment.name}</span>
                     <button
                       onClick={handleRemoveAttachment}
-                      className="p-1 rounded hover:bg-white/10 text-slate-500 hover:text-rose-400 transition-colors"
+                      className="p-1 rounded hover:bg-[#2A2A2C] text-[#8E8E93] hover:text-[#FF3B30] transition-colors"
                       aria-label="Remove attachment"
                     >
                       <X className="h-3 w-3" />
@@ -1208,10 +1145,10 @@ export default function ChatPage() {
                   type="submit"
                   disabled={(!draft.trim() && !pendingAttachment) || !activeId}
                   className={cn(
-                    "px-5 py-2.5 rounded-xl text-white font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed",
+                    "px-5 py-2.5 rounded-xl text-[#FFFFFF] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed",
                     (draft.trim() || pendingAttachment) && activeId
-                      ? "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-[0_0_15px_rgba(6,182,212,0.4)]"
-                      : "bg-white/5 border border-white/10 text-slate-400"
+                      ? "bg-[#25D366] hover:bg-[#1E9E52] shadow-[0_0_15px_rgba(37,211,102,0.4)]"
+                      : "bg-[#1C1C1E] border border-[#2A2A2C] text-[#8E8E93]"
                   )}
                 >
                   <Send className="h-5 w-5" />
@@ -1220,8 +1157,6 @@ export default function ChatPage() {
             </form>
           </>
         )}
-
-        {/* Mobile Copilot View */}
         {activeMobileView === "COPILOT" && (
           <CopilotBriefPanel
             activeConversation={activeConversation}
@@ -1230,21 +1165,19 @@ export default function ChatPage() {
             onExtractTasks={() => {}}
           />
         )}
-
-        {/* WhatsApp Bottom Nav (only on LIST view)} */}
         {activeMobileView === "LIST" && (
-          <div className="h-16 border-t border-white/10 bg-[#050505] px-4 flex items-center justify-around">
+          <div className="h-16 border-t border-[#2A2A2C] bg-[#0A0A0C] px-4 flex items-center justify-around z-20">
             <button
               onClick={() => {}}
-              className="flex flex-col items-center gap-1 text-cyan-400"
+              className="flex flex-col items-center gap-1 text-[#25D366]"
               aria-label="Chats"
             >
-              <MessageSquarePlus className="h-5 w-5" />
+              <MessageCircle className="h-5 w-5" />
               <span className="text-[10px]">Chats</span>
             </button>
             <button
               onClick={() => {}}
-              className="flex flex-col items-center gap-1 text-slate-500 hover:text-white transition-colors"
+              className="flex flex-col items-center gap-1 text-[#8E8E93] hover:text-[#FFFFFF] transition-colors"
               aria-label="Status"
             >
               <Play className="h-5 w-5" />
@@ -1252,7 +1185,7 @@ export default function ChatPage() {
             </button>
             <button
               onClick={() => {}}
-              className="flex flex-col items-center gap-1 text-slate-500 hover:text-white transition-colors"
+              className="flex flex-col items-center gap-1 text-[#8E8E93] hover:text-[#FFFFFF] transition-colors"
               aria-label="Communities"
             >
               <Users className="h-5 w-5" />
@@ -1260,7 +1193,7 @@ export default function ChatPage() {
             </button>
             <button
               onClick={() => setActiveMobileView("CHAT")}
-              className="flex flex-col items-center gap-1 text-slate-500 hover:text-white transition-colors"
+              className="flex flex-col items-center gap-1 text-[#8E8E93] hover:text-[#FFFFFF] transition-colors"
               aria-label="Calls"
             >
               <Phone className="h-5 w-5" />
@@ -1270,129 +1203,134 @@ export default function ChatPage() {
         )}
       </div>
 
-      {/* ========================================================
-         DESKTOP VIEW (md:flex)
-         ======================================================== */}
       <div className="md:flex hidden h-screen">
-        {/* LEFT SIDEBAR — Conversations */}
-        <aside className="flex flex-col w-80 bg-[#0a0a0c]/60 backdrop-blur-xl border-r border-white/10 transition-all duration-300" aria-label="Conversations sidebar">
-          {/* Header */}
-          <div className="flex h-16 shrink-0 items-center justify-between bg-[#0a0a0c]/30 border-b border-white/5 px-4">
+        <aside className="flex flex-col w-80 bg-[#0F0F11] border-r border-[#2A2A2C] transition-all duration-300" aria-label="Conversations sidebar">
+          <div className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-4">
             <div className="flex items-center gap-2">
-              <Logo className="h-8 w-8 text-cyan-400" compact />
-              <span className="font-bold text-lg tracking-tight text-white">Relay</span>
+              <Logo className="h-8 w-8 text-[#25D366]" compact />
+              <span className="font-medium text-sm text-[#FFFFFF] tracking-tight">Relay</span>
             </div>
             <button
               onClick={handleNewChat}
-              className="relative group flex h-8 w-8 items-center justify-center rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:text-cyan-400 transition-all text-cyan-300" aria-label="New conversation"
+              className="relative group flex h-8 w-8 items-center justify-center rounded-full bg-[#2A2A2C] border border-[#2A2A2C] hover:bg-[#3A3A3C] hover:text-[#25D366] transition-all text-[#25D366]" aria-label="New conversation"
             >
               <MessageSquarePlus className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 group-hover:bg-emerald-400 border-2 border-black" />
+              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] group-hover:bg-[#1E9E52] border-2 border-black" />
             </button>
           </div>
-
-          {/* Search & Filters */}
           <div className="p-3 space-y-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8E8E93]" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search conversations…"
-                className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+                className="w-full pl-10 pr-4 py-2 bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl text-sm text-[#FFFFFF] placeholder-[#8E8E93] focus:outline-none focus:border-[#25D366] transition-all"
               />
             </div>
             <div className="flex gap-1">
               {["all", "unread", "favorites", "groups"].map((f) => (
                 <button key={f} onClick={() => setFilter(f as typeof filter)} className={cn(
                   "flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all",
-                  filter === f ? "bg-cyan-500/10 border border-cyan-500/30 text-cyan-300" : "bg-transparent text-slate-400 hover:text-white hover:bg-white/5"
+                  filter === f ? "bg-[#25D366] border border-[#25D366] text-[#FFFFFF]" : "bg-transparent text-[#8E8E93] hover:text-[#FFFFFF] hover:bg-[#2A2A2C]"
                 )}>
                   {f.charAt(0).toUpperCase() + f.slice(1)}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Conversation List */}
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {filteredConversations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center text-slate-500">
+              <div className="flex flex-col items-center justify-center py-20 text-center text-[#8E8E93]">
                 <MessageSquarePlus className="h-10 w-10 mb-2 opacity-30" />
                 <p className="text-sm">No conversations yet</p>
-                <button onClick={handleNewChat} className="mt-3 text-xs text-cyan-400 underline hover:text-cyan-300">Start a new chat</button>
+                <button onClick={handleNewChat} className="mt-3 text-xs text-[#25D366] underline hover:text-[#1E9E52]">Start a new chat</button>
               </div>
             ) : (
               filteredConversations.map((conv) => {
                 const isActive = conv.id === activeId;
                 const unread = conv.unreadCount > 0;
                 return (
-                  <button key={conv.id} onClick={() => {
-                    setActiveId(conv.id);
-                    setMessages(conv.id === "conv_general_community" ? MOCK_MESSAGES : []);
-                  }} className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
-                    isActive ? "bg-cyan-500/15 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]" : "hover:bg-white/5 border border-transparent"
-                  )}
-                >
-                  <div className="relative h-10 w-10 shrink-0">
-                    <img src={conv.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=06b6d4&color=fff"} alt={conv.title || "Conversation"} className="h-full w-full rounded-full object-cover border border-white/10" />
-                    {unread && <div className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium text-sm text-white truncate">{conv.title || conv.other?.displayName || "Unknown"}</h3>
-                      <span className="text-[10px] text-slate-500">{new Date(conv.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  <button
+                    key={conv.id}
+                    onClick={() => {
+                      setActiveId(conv.id);
+                      setMessages(conv.id === "conv_general_community" ? MOCK_MESSAGES : []);
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200",
+                      isActive
+                        ? "bg-[#25D366]/10 border border-[#25D366] shadow-[0_0_15px_rgba(37,211,102,0.15)]"
+                        : "hover:bg-[#2A2A2C] border border-transparent"
+                    )}
+                  >
+                    <div className="relative h-10 w-10 shrink-0">
+                      <img src={conv.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=25D366&color=fff"} alt={conv.title || "Conversation"} className="h-full w-full rounded-full object-cover border border-[#2A2A2C]" />
+                      {unread && (
+                        <div className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] border-2 border-black" />
+                      )}
                     </div>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <p className="text-xs text-slate-400 truncate">{conv.lastMessage?.text || "No messages yet"}</p>
-                      {unread && <span className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-black">{conv.unreadCount > 9 ? "9+" : conv.unreadCount}</span>}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium text-sm text-[#FFFFFF] truncate">
+                          {conv.title || conv.other?.displayName || "Unknown"}
+                        </h3>
+                        <span className="text-[10px] text-[#8E8E93]">
+                          {new Date(conv.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <p className="text-xs text-[#8E8E93] truncate">{conv.lastMessage?.text || "No messages yet"}</p>
+                        {unread && (
+                          <span className="h-5 w-5 rounded-full bg-[#25D366] flex items-center justify-center text-[10px] font-bold text-[#000000]">
+                            {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </button>
-              )
-            }
-            ))}
+                  </button>
+                );
+              })
+            )}
           </div>
-
-          {/* Bottom profile */}
-          <div className="p-3 border-t border-white/10">
-            <div className="flex items-center gap-3 cursor-pointer hover:bg-white/5 rounded-xl p-2 transition-colors">
+          <div className="p-3 border-t border-[#2A2A2C]">
+            <div className="flex items-center gap-3 cursor-pointer hover:bg-[#2A2A2C] rounded-xl p-2 transition-colors">
               <Avatar user={user} size={32} />
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-sm text-white truncate">{user.displayName}</h3>
-                <p className="text-xs text-slate-400 truncate">{user.username}</p>
+                <h3 className="font-medium text-sm text-[#FFFFFF] truncate">{user.displayName}</h3>
+                <p className="text-xs text-[#8E8E93] truncate">{user.username}</p>
               </div>
-              <MoreVertical className="h-4 w-4 text-slate-500" />
+              <MoreVertical className="h-4 w-4 text-[#8E8E93]" />
             </div>
           </div>
         </aside>
-
-        {/* MAIN — Chat / Stories Feed */}
-        <main className="flex-1 flex flex-col min-w-0 bg-[#050505]/80 backdrop-blur-sm">
-          {/* Header */}
-          <header className="flex h-16 shrink-0 items-center justify-between bg-[#0a0a0c]/30 border-b border-white/5 px-6">
+        <main className="flex-1 flex flex-col min-w-0 bg-[#0A0A0C]">
+          <header className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-6">
             <div className="flex items-center gap-3">
               {activeConversation ? (
                 <>
                   <div className="relative h-10 w-10 shrink-0">
-                    <img src={activeConversation.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=06b6d4&color=fff"} alt={activeConversation.title || "Conversation"} className="h-full w-full rounded-full object-cover border border-white/10" />
-                    <span className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />
+                    <img
+                      src={activeConversation.other?.avatarUrl || "https://ui-avatars.com/api/?name=Group&background=25D366&color=fff"}
+                      alt={activeConversation.title || "Conversation"}
+                      className="h-full w-full rounded-full object-cover border border-[#2A2A2C]"
+                    />
+                    <span className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] border-2 border-black" />
                   </div>
                   <div>
-                    <h2 className="font-medium text-sm text-white">{activeConversation.title || "Conversation"}</h2>
-                    <p className="text-xs text-slate-400">{activeConversation.participantCount} members · Active</p>
+                    <h2 className="font-medium text-sm text-[#FFFFFF]">{activeConversation.title || "Conversation"}</h2>
+                    <p className="text-xs text-[#8E8E93]">{activeConversation.participantCount} members · Active</p>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center text-slate-400">
+                  <div className="h-10 w-10 rounded-full bg-[#1C1C1E] flex items-center justify-center text-[#8E8E93]">
                     <UserRound className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="font-medium text-sm text-white">Select a conversation</h2>
-                    <p className="text-xs text-slate-400">Start a new chat or pick one from the sidebar</p>
+                    <h2 className="font-medium text-sm text-[#FFFFFF]">Select a conversation</h2>
+                    <p className="text-xs text-[#8E8E93]">Start a new chat or pick one from the sidebar</p>
                   </div>
                 </>
               )}
@@ -1400,14 +1338,14 @@ export default function ChatPage() {
             <div className="flex items-center gap-2">
               {activeConversation?.title !== "Relay Assistant" ? (
                 <>
-                  <button ref={moreOptionsRef} onClick={(e) => { e.stopPropagation(); setShowMoreOptions((prev) => !prev); }} className="relative inline-block p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="More options">
+                  <button ref={moreOptionsRef} onClick={(e) => { e.stopPropagation(); setShowMoreOptions((prev) => !prev); }} className="relative inline-block p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors" aria-label="More options">
                     <MoreVertical className="h-5 w-5" />
                   </button>
-                  <button onClick={() => handleStartCall("audio")} className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Start audio call"><Phone className="h-5 w-5" /></button>
-                  <button onClick={() => handleStartCall("video")} className="p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="Start video call"><Video className="h-5 w-5" /></button>
+                  <button onClick={() => handleStartCall("audio")} className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors" aria-label="Start audio call"><Phone className="h-5 w-5" /></button>
+                  <button onClick={() => handleStartCall("video")} className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors" aria-label="Start video call"><Video className="h-5 w-5" /></button>
                 </>
               ) : (
-                <button ref={moreOptionsRef} onClick={(e) => { e.stopPropagation(); setShowMoreOptions((prev) => !prev); }} className="relative inline-block p-2 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors" aria-label="More options">
+                <button ref={moreOptionsRef} onClick={(e) => { e.stopPropagation(); setShowMoreOptions((prev) => !prev); }} className="relative inline-block p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors" aria-label="More options">
                   <MoreVertical className="h-5 w-5" />
                 </button>
               )}
@@ -1416,76 +1354,119 @@ export default function ChatPage() {
               )}
             </div>
           </header>
-
-          {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {activeConversation ? (
               <>
                 {visibleMessages.length > 0 ? (
-                  visibleMessages.map((msg) => <MessageBubble key={msg.id} message={msg} isMe={msg.senderId === "usr_me"} />)
+                  visibleMessages.map((msg) => (
+                    <MessageBubble key={msg.id} message={msg} isMe={msg.senderId === "usr_me"} />
+                  ))
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-center text-slate-500 pt-20">
+                  <div className="flex flex-col items-center justify-center h-full text-center text-[#8E8E93] pt-20">
                     <p className="text-sm mb-2">No messages yet</p>
                     <p className="text-xs">Start the conversation by sending a message below.</p>
                   </div>
                 )}
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center text-slate-600 pt-20">
-                <MessageSquarePlus className="h-12 w-12 mb-3 opacity-20" />
-                <h3 className="font-medium text-sm text-slate-400">Select a conversation to start messaging</h3>
-                <p className="text-xs text-slate-500 mt-1">Pick a thread from the sidebar or create a new one.</p>
+              <div className="flex flex-col items-center justify-center h-full text-center text-[#8E8E93] pt-20">
+                <MessageSquarePlus className="h-12 w-12 mb-3 opacity-30" />
+                <h3 className="font-medium text-sm text-[#8E8E93]">Select a conversation to start messaging</h3>
+                <p className="text-xs text-[#8E8E93] mt-1">Pick a thread from the sidebar or create a new one.</p>
               </div>
             )}
           </div>
-
-          {/* Message Input Bar */}
-          <form onSubmit={handleSend} className="p-4 border-t border-white/10 bg-[#0a0a0c]/40 backdrop-blur-xl">
+          <form onSubmit={handleSend} className="p-4 border-t border-[#2A2A2C] bg-[#0A0A0C]">
             <div className="flex items-end gap-2">
-              <label className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors cursor-pointer" aria-label="Attach file">
+              <label
+                className="p-2.5 rounded-xl text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors cursor-pointer"
+                aria-label="Attach file"
+              >
                 <Paperclip className="h-5 w-5" />
-                <input type="file" ref={setFileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,application/pdf" />
+                <input
+                  type="file"
+                  ref={setFileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept="image/*,application/pdf"
+                />
               </label>
-              <button type="button" onClick={() => setShowEmojiPicker((prev) => !prev)} className="p-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors relative" aria-label="Emoji picker">
+              <button
+                type="button"
+                onClick={() => setShowEmojiPicker((prev) => !prev)}
+                className="p-2.5 rounded-xl text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-colors relative"
+                aria-label="Emoji picker"
+              >
                 <Smile className="h-5 w-5" />
-                {showEmojiPicker && <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-emerald-500 border-2 border-black" />}
+                {showEmojiPicker && (
+                  <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] border-2 border-black" />
+                )}
               </button>
               <div className="flex-1 relative">
-                <textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Type a message…" rows={1} maxRows={4} className="w-full bg-transparent text-sm text-white placeholder-slate-500 resize-none focus:outline-none scrollbar-hide" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(e); } }} />
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="Type a message…"
+                  rows={1}
+                  maxRows={4}
+                  className="w-full bg-transparent text-sm text-[#FFFFFF] placeholder-[#8E8E93] resize-none focus:outline-none scrollbar-hide"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend(e);
+                    }
+                  }}
+                />
                 {showEmojiPicker && (
-                  <div className="data-[emoji-picker] absolute bottom-[60px] left-0 w-full bg-[#0a0a0c]/90 border border-white/10 rounded-xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200 z-50">
+                  <div className="data-[emoji-picker] absolute bottom-[60px] left-0 w-full bg-[#0A0A0C] border border-[#2A2A2C] rounded-xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200 z-50">
                     <div className="flex flex-wrap gap-1 max-h-48 overflow-y-auto">
                       {EMOJIS.map((emoji) => (
-                        <button key={emoji} onClick={() => handleEmojiSelect(emoji)} className="h-8 w-8 rounded-lg text-lg hover:bg-white/5 transition-colors flex items-center justify-center" data-emoji-picker>{emoji}</button>
+                        <button
+                          key={emoji}
+                          onClick={() => handleEmojiSelect(emoji)}
+                          className="h-8 w-8 rounded-lg text-lg hover:bg-[#2A2A2C] transition-colors flex items-center justify-center"
+                          data-emoji-picker
+                        >
+                          {emoji}
+                        </button>
                       ))}
                     </div>
                   </div>
                 )}
               </div>
               {pendingAttachment && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 animate-in fade-in zoom-in duration-200">
-                  <ImageIcon className="h-4 w-4 text-cyan-400 shrink-0" />
-                  <span className="text-xs text-slate-300 truncate max-w-[120px]">{pendingAttachment.name}</span>
-                  <button onClick={handleRemoveAttachment} className="p-1 rounded hover:bg-white/10 text-slate-500 hover:text-rose-400 transition-colors" aria-label="Remove attachment"><X className="h-3 w-3" /></button>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#2A2A2C] border border-[#2A2A2C] animate-in fade-in zoom-in duration-200">
+                  <ImageIcon className="h-4 w-4 text-[#25D366] shrink-0" />
+                  <span className="text-xs text-[#8E8E93] truncate max-w-[120px]">{pendingAttachment.name}</span>
+                  <button
+                    onClick={handleRemoveAttachment}
+                    className="p-1 rounded hover:bg-[#2A2A2C] text-[#8E8E93] hover:text-[#FF3B30] transition-colors"
+                    aria-label="Remove attachment"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                 </div>
               )}
-              <button type="submit" disabled={(!draft.trim() && !pendingAttachment) || !activeId} className={cn("px-5 py-2.5 rounded-xl text-white font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed", (draft.trim() || pendingAttachment) && activeId ? "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-[0_0_15px_rgba(6,182,212,0.4)]" : "bg-white/5 border border-white/10 text-slate-400")}>
+              <button
+                type="submit"
+                disabled={(!draft.trim() && !pendingAttachment) || !activeId}
+                className={cn(
+                  "px-5 py-2.5 rounded-xl text-[#FFFFFF] font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed",
+                  (draft.trim() || pendingAttachment) && activeId
+                    ? "bg-[#25D366] hover:bg-[#1E9E52] shadow-[0_0_15px_rgba(37,211,102,0.4)]"
+                    : "bg-[#1C1C1E] border border-[#2A2A2C] text-[#8E8E93]"
+                )}
+              >
                 <Send className="h-5 w-5" />
               </button>
             </div>
           </form>
         </main>
-
-        {/* RIGHT — AI Copilot Panel */}
         <CopilotBriefPanel activeConversation={activeConversation} messages={visibleMessages} onSummarize={() => {}} onExtractTasks={() => {}} />
-
-        {/* Call Overlay Modal */}
         {isCalling && (
-          <CallOverlay open={isCalling} onClose={() => setIsCalling(false)} callType={callType} peer={{ name: activeConversation?.title || "Contact", avatarUrl: activeConversation?.other?.avatarUrl || "https://ui-avatars.com/api/?name=Contact&background=06b6d4&color=fff" }} />
+          <CallOverlay open={isCalling} onClose={() => setIsCalling(false)} callType={callType} peer={{ name: activeConversation?.title || "Contact", avatarUrl: activeConversation?.other?.avatarUrl || "https://ui-avatars.com/api/?name=Contact&background=25D366&color=fff" }} />
         )}
       </div>
-
-      {/* Modals */}
       <UserSearchModal open={showUserSearch} onClose={() => setShowUserSearch(false)} onSelect={(u) => { toast(`Added ${u.displayName} to conversation`, "success"); setShowUserSearch(false); }} />
     </div>
   );
