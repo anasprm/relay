@@ -787,7 +787,10 @@ export default function ChatPage() {
   /* Navigation helpers                                             */
   /* -------------------------------------------------------------- */
   const openChat = useCallback(() => setMobileView('CHAT'), []);
-  const openList = useCallback(() => setMobileView('LIST'), []);
+  const openList = useCallback(() => {
+    setMobileView('LIST');
+    setActiveId(null);
+  }, []);
   const openCopilot = useCallback(() => setMobileView('COPILOT'), []);
   const toggleCopilot = useCallback(() => setCopilotOpen((p) => !p), []);
 
@@ -1091,40 +1094,6 @@ export default function ChatPage() {
   }, []);
 
   /* -------------------------------------------------------------- */
-  /* Panel transforms for mobile slide transitions — Phase 2        */
-  /* -------------------------------------------------------------- */
-  const panelTransform = useMemo(() => {
-    const center = 'translate-x-0';
-    const offRight = 'translate-x-full';
-    const offLeft = '-translate-x-full';
-    switch (mobileView) {
-      case 'LIST':
-      case 'STATUS':
-      case 'COMMUNITIES':
-      case 'CALLS':
-        return { list: center, chat: offRight, copilot: offLeft };
-      case 'CHAT':
-        return { list: offLeft, chat: center, copilot: offRight };
-      case 'COPILOT':
-        return { list: offRight, chat: offLeft, copilot: center };
-    }
-  }, [mobileView]);
-
-  const panelStyle = (view: 'list' | 'chat' | 'copilot') => {
-    const isActive =
-      (mobileView === 'LIST' && view === 'list') ||
-      (mobileView === 'CHAT' && view === 'chat') ||
-      (mobileView === 'COPILOT' && view === 'copilot') ||
-      // For STATUS/COMMUNITIES/CALLS, the list panel is active
-      ((mobileView === 'STATUS' || mobileView === 'COMMUNITIES' || mobileView === 'CALLS') && view === 'list');
-    return {
-      transition: 'transform 260ms cubic-bezier(0.23, 1, 0.32, 1)',
-      willChange: 'transform',
-      pointerEvents: isActive ? 'auto' : 'none',
-    } as React.CSSProperties;
-  };
-
-  /* -------------------------------------------------------------- */
   /* Mobile views                                                   */
   /* -------------------------------------------------------------- */
   const mobileList = (
@@ -1280,7 +1249,8 @@ export default function ChatPage() {
 
   const mobileChat = (
     <div className="flex h-full flex-col pointer-events-auto">
-      <header className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-4 z-20">
+      {/* Sticky header — Phase 2 */}
+      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C]/90 backdrop-blur-md border-b border-[#2A2A2C] px-4">
         <button onClick={openList} className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] pointer-events-auto" aria-label="Back">
           <ArrowRight className="h-5 w-5 rotate-180" />
         </button>
@@ -1316,7 +1286,8 @@ export default function ChatPage() {
           </button>
         </div>
       </header>
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 relay-will-change-scroll relay-anti-smear">
+      {/* Scrollable message area — flex-1 min-h-0 prevents header overlap */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2 relay-will-change-scroll relay-anti-smear">
         {visibleMessages.length > 0 ? (
           visibleMessages.map((msg, i) => (
             <MessageBubble
@@ -1341,31 +1312,22 @@ export default function ChatPage() {
         )}
       </div>
       {activeId && (
-        <Composer
-          disabled={!activeId}
-          draft={draft}
-          setDraft={setDraft}
-          pendingAttachment={pendingAttachment}
-          onRemoveAttachment={handleRemoveAttachment}
-          onToggleEmoji={() => setEmojiOpen((p) => !p)}
-          onSend={handleSend}
-          emojiOpen={emojiOpen}
-          onFileChange={handleFileChange}
-          fileInputRef={fileInputRef}
-        />
+        <div className="relay-pb-safe">
+          <Composer
+            disabled={!activeId}
+            draft={draft}
+            setDraft={setDraft}
+            pendingAttachment={pendingAttachment}
+            onRemoveAttachment={handleRemoveAttachment}
+            onToggleEmoji={() => setEmojiOpen((p) => !p)}
+            onSend={handleSend}
+            emojiOpen={emojiOpen}
+            onFileChange={handleFileChange}
+            fileInputRef={fileInputRef}
+          />
+        </div>
       )}
     </div>
-  );
-
-  const mobileCopilot = (
-    <CopilotPanel
-      activeConversation={activeConversation}
-      messages={visibleMessages}
-      open
-      onClose={openList}
-      onSummarize={() => {}}
-      onExtractTasks={() => {}}
-    />
   );
 
   /* -------------------------------------------------------------- */
@@ -1672,32 +1634,21 @@ export default function ChatPage() {
 
   return (
     <div className="h-[100dvh] bg-[#0A0A0C] text-[#FFFFFF] overflow-hidden relay-anti-smear relay-pb-safe">
-      {/* MOBILE: three panels mounted simultaneously, slide via transform — Phase 2 */}
-      <div className="md:hidden relative overflow-hidden h-full">
-        <div
-          className="absolute inset-0 h-full w-full"
-          style={{ transform: panelTransform.list, ...panelStyle('list') }}
-        >
-          {mobileList}
-        </div>
-        <div
-          className="absolute inset-0 h-full w-full"
-          style={{ transform: panelTransform.chat, ...panelStyle('chat') }}
-        >
-          {mobileChat}
-        </div>
-        <div
-          className="absolute inset-0 h-full w-full"
-          style={{ transform: panelTransform.copilot, ...panelStyle('copilot') }}
-        >
-          {mobileCopilot}
-        </div>
-        {emojiOpen && (
-          <EmojiTray open onClose={() => setEmojiOpen(false)} onSelect={handleEmojiSelect} />
+      {/* MOBILE: strict single-pane — only one view mounted at a time */}
+      <div className="md:hidden h-full">
+        {!activeId ? (
+          <>
+            {mobileList}
+            {emojiOpen && (
+              <EmojiTray open onClose={() => setEmojiOpen(false)} onSelect={handleEmojiSelect} />
+            )}
+          </>
+        ) : (
+          mobileChat
         )}
       </div>
 
-      {/* DESKTOP 3-PANE */}
+      {/* DESKTOP 3-PANE: sidebar + main + optional copilot */}
       <div className="hidden md:flex h-[100dvh]">
         {desktopSidebar}
         {desktopMain}
