@@ -19,6 +19,7 @@ import {
   ArrowRight,
   CheckCheck,
   Image as ImageIcon,
+  LogOut,
   Mic,
   MessageCircle,
   MessageSquarePlus,
@@ -29,8 +30,10 @@ import {
   Plus,
   Search,
   Send,
+  Settings,
   Smile,
   Sparkles,
+  User,
   UserRound,
   Users,
   Video,
@@ -709,10 +712,12 @@ export default function ChatPage() {
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [newChatInput, setNewChatInput] = useState('');
   const [isNewChatInputOpen, setIsNewChatInputOpen] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
   const [callType, setCallType] = useState<'audio' | 'video'>('audio');
   const [pendingAttachment, setPendingAttachment] = useState<{ name: string } | null>(null);
   const moreOptionsRef = useRef<HTMLButtonElement>(null);
+  const profileMenuRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1420,9 +1425,43 @@ export default function ChatPage() {
               </h3>
               <p className="text-xs text-[#8E8E93] truncate">{user.username}</p>
             </div>
-            <MoreVertical className="h-4 w-4 text-[#8E8E93]" />
+            <MoreVertical
+              ref={profileMenuRef}
+              className="h-4 w-4 text-[#8E8E93]"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowProfileMenu((p) => !p);
+              }}
+            />
           </div>
         ) : null}
+        {showProfileMenu && (
+          <MoreOptionsMenu
+            open={true}
+            onClose={() => setShowProfileMenu(false)}
+            anchorRef={profileMenuRef}
+            menuItems={[
+              {
+                label: 'Profile',
+                icon: <User className="h-4 w-4" />,
+                onClick: () => {
+                  toast('Profile settings', 'info');
+                },
+              },
+              {
+                label: 'Settings',
+                icon: <Settings className="h-4 w-4" />,
+                onClick: () => {
+                  toast('Opening settings', 'info');
+                },
+              },
+            ]}
+            dangerLabel="Sign out"
+            dangerAction={() => {
+              toast('Signed out', 'info');
+            }}
+          />
+        )}
       </div>
     </aside>
   );

@@ -1,19 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
-import { Bell, FileText, Lock, Trash2, X } from 'lucide-react';
+import { Bell, FileText, Lock, LogOut, Settings, Trash2, User, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Portal } from './Portal';
 
-interface MoreOptionsMenuProps {
-  open: boolean;
-  onClose: () => void;
-  anchorRef: RefObject<HTMLButtonElement | null>;
-  onClearChat?: () => void;
-  onMute?: () => void;
-  onLeaveGroup?: () => void;
-  dangerLabel?: string;
-  dangerAction?: () => void;
+interface MenuItemDef {
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  danger?: boolean;
+  disabled?: boolean;
 }
 
 function MenuItem({
@@ -49,13 +46,20 @@ function MenuItem({
   );
 }
 
+interface MoreOptionsMenuProps {
+  open: boolean;
+  onClose: () => void;
+  anchorRef: RefObject<HTMLButtonElement | null>;
+  menuItems?: MenuItemDef[];
+  dangerLabel?: string;
+  dangerAction?: () => void;
+}
+
 export function MoreOptionsMenu({
   open,
   onClose,
   anchorRef,
-  onClearChat,
-  onMute,
-  onLeaveGroup,
+  menuItems,
   dangerLabel,
   dangerAction,
 }: MoreOptionsMenuProps) {
@@ -133,52 +137,37 @@ export function MoreOptionsMenu({
           role="menu"
           aria-label="More options"
         >
-          <div className="flex items-center justify-between gap-0.5 px-0.5">
-            {onClearChat && (
-              <MenuItem
-                icon={<FileText className="h-4 w-4" />}
-                label="Clear chat history"
-                onClick={() => {
-                  onClearChat();
-                  onClose();
-                }}
-              />
-            )}
-            {onMute && (
-              <MenuItem
-                icon={<Bell className="h-4 w-4" />}
-                label="Mute notifications"
-                onClick={() => {
-                  onMute();
-                  onClose();
-                }}
-              />
-            )}
-            {onLeaveGroup && (
-              <MenuItem
-                icon={<Lock className="h-4 w-4" />}
-                label="Leave group"
-                onClick={() => {
-                  onLeaveGroup?.();
-                  onClose();
-                }}
-              />
-            )}
-            {dangerAction && dangerLabel && (
-              <MenuItem
-                icon={<Trash2 className="h-4 w-4" />}
-                label={dangerLabel}
-                onClick={() => {
-                  dangerAction();
-                  onClose();
-                }}
-                danger
-              />
-            )}
-          </div>
-          {dangerAction || onClearChat || onMute || onLeaveGroup ? (
+          {/* Guarded mapping over menu items — safely handles undefined/null */}
+          {(menuItems || []).map((item, i) => (
+            <MenuItem
+              key={i}
+              icon={item.icon}
+              label={item.label}
+              onClick={() => {
+                item.onClick();
+                onClose();
+              }}
+              danger={item.danger}
+              disabled={item.disabled}
+            />
+          ))}
+          {(menuItems || []).length > 0 && dangerAction && dangerLabel && (
             <div className="my-1 h-[1px] bg-border" />
-          ) : null}
+          )}
+          {dangerAction && dangerLabel && (
+            <MenuItem
+              icon={<Trash2 className="h-4 w-4" />}
+              label={dangerLabel}
+              onClick={() => {
+                dangerAction();
+                onClose();
+              }}
+              danger
+            />
+          )}
+          {(menuItems || []).length > 0 && (
+            <div className="my-1 h-[1px] bg-border" />
+          )}
           <MenuItem
             icon={<X className="h-4 w-4" />}
             label="Cancel"
