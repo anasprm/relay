@@ -568,7 +568,7 @@ export function Composer({
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSend(); }} className="w-full">
-      <div className="flex items-end gap-1.5 bg-[#0A0A0C] border-t border-[#1C1C1E] px-2 py-1.5">
+      <div className="flex items-end gap-1.5 bg-[#0A0A0C] border-t border-[#1C1C1E] px-2 py-1.5 pointer-events-auto">
         {/* Left: Attachment */}
         <label
           className="p-1.5 rounded-[14px] text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] cursor-pointer"
@@ -1110,31 +1110,39 @@ export default function ChatPage() {
     }
   }, [mobileView]);
 
-  const panelStyle = {
-    transition: 'transform 260ms cubic-bezier(0.23, 1, 0.32, 1)',
-    willChange: 'transform',
-  } as React.CSSProperties;
+  const panelStyle = (view: 'list' | 'chat' | 'copilot') => {
+    const isActive =
+      (mobileView === 'LIST' && view === 'list') ||
+      (mobileView === 'CHAT' && view === 'chat') ||
+      (mobileView === 'COPILOT' && view === 'copilot') ||
+      // For STATUS/COMMUNITIES/CALLS, the list panel is active
+      ((mobileView === 'STATUS' || mobileView === 'COMMUNITIES' || mobileView === 'CALLS') && view === 'list');
+    return {
+      transition: 'transform 260ms cubic-bezier(0.23, 1, 0.32, 1)',
+      willChange: 'transform',
+      pointerEvents: isActive ? 'auto' : 'none',
+    } as React.CSSProperties;
+  };
 
   /* -------------------------------------------------------------- */
   /* Mobile views                                                   */
   /* -------------------------------------------------------------- */
   const mobileList = (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col pointer-events-auto">
       <header className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-4 z-20">
         <div className="flex items-center gap-2">
           <Logo className="h-8 w-8 text-[#25D366]" compact />
           <span className="font-medium text-sm text-[#FFFFFF] tracking-tight">Relay</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pointer-events-auto">
           <Search className="h-5 w-5 text-[#8E8E93]" />
-          <button className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]" aria-label="Camera">
+          <button className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] pointer-events-auto" aria-label="Camera">
             <Play className="h-5 w-5" />
           </button>
           <button
             ref={moreOptionsRef}
             onClick={(e) => { e.stopPropagation(); setShowMoreOptions((p) => !p); }}
-            className="relative inline-block p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]"
-            aria-label="More options"
+            className="relative inline-block p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] pointer-events-auto" aria-label="More options"
           >
             <MoreVertical className="h-5 w-5" />
           </button>
@@ -1213,11 +1221,11 @@ export default function ChatPage() {
           </button>
         )}
       </div>
-      <div className="h-16 border-t border-[#2A2A2C] bg-[#0A0A0C] px-3 flex items-center justify-around z-20 relay-pb-safe">
+      <div className="h-16 border-t border-[#2A2A2C] bg-[#0A0A0C] px-3 flex items-center justify-around z-20 relay-pb-safe pointer-events-auto">
         <button
           onClick={() => setMobileView('LIST')}
           className={cn(
-            'flex flex-col items-center gap-1',
+            'flex flex-col items-center gap-1 pointer-events-auto',
             mobileView === 'LIST'
               ? 'text-[#25D366]'
               : 'text-[#8E8E93] hover:text-[#FFFFFF] transition-colors',
@@ -1230,7 +1238,7 @@ export default function ChatPage() {
         <button
           onClick={() => setMobileView('STATUS')}
           className={cn(
-            'flex flex-col items-center gap-1',
+            'flex flex-col items-center gap-1 pointer-events-auto',
             mobileView === 'STATUS'
               ? 'text-[#25D366]'
               : 'text-[#8E8E93] hover:text-[#FFFFFF] transition-colors',
@@ -1243,7 +1251,7 @@ export default function ChatPage() {
         <button
           onClick={() => setMobileView('COMMUNITIES')}
           className={cn(
-            'flex flex-col items-center gap-1',
+            'flex flex-col items-center gap-1 pointer-events-auto',
             mobileView === 'COMMUNITIES'
               ? 'text-[#25D366]'
               : 'text-[#8E8E93] hover:text-[#FFFFFF] transition-colors',
@@ -1256,7 +1264,7 @@ export default function ChatPage() {
         <button
           onClick={() => setMobileView('CALLS')}
           className={cn(
-            'flex flex-col items-center gap-1',
+            'flex flex-col items-center gap-1 pointer-events-auto',
             mobileView === 'CALLS'
               ? 'text-[#25D366]'
               : 'text-[#8E8E93] hover:text-[#FFFFFF] transition-colors',
@@ -1271,9 +1279,9 @@ export default function ChatPage() {
   );
 
   const mobileChat = (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col pointer-events-auto">
       <header className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-4 z-20">
-        <button onClick={openList} className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]" aria-label="Back">
+        <button onClick={openList} className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] pointer-events-auto" aria-label="Back">
           <ArrowRight className="h-5 w-5 rotate-180" />
         </button>
         <div className="flex items-center gap-3 min-w-0">
@@ -1296,14 +1304,14 @@ export default function ChatPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={openCopilot} className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]" aria-label="AI Copilot">
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <button onClick={openCopilot} className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] pointer-events-auto" aria-label="AI Copilot">
             <Sparkles className="h-5 w-5" />
           </button>
-          <button className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]" aria-label="Call">
+          <button className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] pointer-events-auto" aria-label="Call">
             <Phone className="h-5 w-5" />
           </button>
-          <button className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]" aria-label="Video">
+          <button className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] pointer-events-auto" aria-label="Video">
             <Video className="h-5 w-5" />
           </button>
         </div>
@@ -1668,19 +1676,19 @@ export default function ChatPage() {
       <div className="md:hidden relative overflow-hidden h-full">
         <div
           className="absolute inset-0 h-full w-full"
-          style={{ transform: panelTransform.list, ...panelStyle }}
+          style={{ transform: panelTransform.list, ...panelStyle('list') }}
         >
           {mobileList}
         </div>
         <div
           className="absolute inset-0 h-full w-full"
-          style={{ transform: panelTransform.chat, ...panelStyle }}
+          style={{ transform: panelTransform.chat, ...panelStyle('chat') }}
         >
           {mobileChat}
         </div>
         <div
           className="absolute inset-0 h-full w-full"
-          style={{ transform: panelTransform.copilot, ...panelStyle }}
+          style={{ transform: panelTransform.copilot, ...panelStyle('copilot') }}
         >
           {mobileCopilot}
         </div>
