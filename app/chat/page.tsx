@@ -707,6 +707,8 @@ export default function ChatPage() {
   const [copilotOpen, setCopilotOpen] = useState(true);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [newChatInput, setNewChatInput] = useState('');
+  const [isNewChatInputOpen, setIsNewChatInputOpen] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
   const [callType, setCallType] = useState<'audio' | 'video'>('audio');
   const [pendingAttachment, setPendingAttachment] = useState<{ name: string } | null>(null);
@@ -798,8 +800,66 @@ export default function ChatPage() {
     setActiveId(null);
     setMessages([]);
     setDraft('');
-    toast('Start a new conversation by entering a username or email', 'info');
-  }, [toast]);
+    setNewChatInput('');
+    setIsNewChatInputOpen(true);
+  }, []);
+
+  const handleNewChatSubmit = useCallback(() => {
+    const query = newChatInput.trim();
+    if (!query) return;
+
+    // Look for existing conversation by title, displayName, or username
+    const existing = conversations.find(
+      (c) =>
+        c.title?.toLowerCase() === query.toLowerCase() ||
+        c.other?.displayName.toLowerCase() === query.toLowerCase() ||
+        c.other?.username.toLowerCase() === query.toLowerCase(),
+    );
+
+    if (existing) {
+      setActiveId(existing.id);
+      setMessages(existing.lastMessage ? [existing.lastMessage] : []);
+      setIsNewChatInputOpen(false);
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setMobileView('CHAT');
+      }
+      return;
+    }
+
+    // Create a new direct conversation
+    const newConv: Conversation = {
+      id: `conv_${Date.now()}`,
+      conversationId: `conv_${Date.now()}`,
+      title: query,
+      kind: 'direct',
+      participantIds: ['usr_me'],
+      other: {
+        id: `usr_${Date.now()}`,
+        username: query,
+        displayName: query,
+        accent: 'emerald',
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(query)}&background=25D366&color=fff`,
+        online: false,
+        lastSeen: null,
+      },
+      participantCount: 2,
+      lastMessage: null,
+      unreadCount: 0,
+      modes: { anonymity: false, vanish: false },
+      locked: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messageCount: 0,
+    };
+
+    setConversations((prev) => [newConv, ...prev]);
+    setActiveId(newConv.id);
+    setMessages([]);
+    setIsNewChatInputOpen(false);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setMobileView('CHAT');
+    }
+  }, [newChatInput, conversations]);
 
   const handleSend = useCallback(async () => {
     const text = draft.trim();
@@ -1046,6 +1106,35 @@ export default function ChatPage() {
           )}
         </div>
       </header>
+      {isNewChatInputOpen && (
+        <div className="p-3 space-y-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8E8E93]" />
+            <input
+              type="text"
+              value={newChatInput}
+              onChange={(e) => setNewChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleNewChatSubmit();
+                if (e.key === 'Escape') setIsNewChatInputOpen(false);
+              }}
+              placeholder="Enter username or email…"
+              className="w-full pl-10 pr-10 py-2 bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl text-sm text-[#FFFFFF] placeholder-[#8E8E93] focus:outline-none focus:border-[#25D366] transition-all"
+              autoFocus
+            />
+            <button
+              onClick={() => setIsNewChatInputOpen(false)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#2A2A2C] text-[#8E8E93] hover:text-[#FFFFFF] transition-colors"
+              aria-label="Close new chat input"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="text-xs text-[#8E8E93]">
+            Type a username or email to start a new conversation
+          </p>
+        </div>
+      )}
       <div className="relative flex-1 overflow-y-auto px-2 space-y-1 relay-will-change-scroll relay-anti-smear">
         {filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center text-[#8E8E93]">
@@ -1241,6 +1330,35 @@ export default function ChatPage() {
           <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] group-hover:bg-[#1E9E52] border-2 border-black" />
         </button>
       </div>
+      {isNewChatInputOpen && (
+        <div className="p-3 space-y-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8E8E93]" />
+            <input
+              type="text"
+              value={newChatInput}
+              onChange={(e) => setNewChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleNewChatSubmit();
+                if (e.key === 'Escape') setIsNewChatInputOpen(false);
+              }}
+              placeholder="Enter username or email…"
+              className="w-full pl-10 pr-10 py-2 bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl text-sm text-[#FFFFFF] placeholder-[#8E8E93] focus:outline-none focus:border-[#25D366] transition-all"
+              autoFocus
+            />
+            <button
+              onClick={() => setIsNewChatInputOpen(false)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#2A2A2C] text-[#8E8E93] hover:text-[#FFFFFF] transition-colors"
+              aria-label="Close new chat input"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="text-xs text-[#8E8E93]">
+            Type a username or email to start a new conversation
+          </p>
+        </div>
+      )}
       <div className="p-3 space-y-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8E8E93]" />
