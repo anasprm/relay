@@ -615,8 +615,7 @@ export function Composer({
             disabled={disabled}
             placeholder="Type a message…"
             rows={1}
-            maxRows={5}
-            className="w-full bg-transparent text-white placeholder-zinc-500 focus:outline-none text-sm py-1"
+            className="w-full bg-transparent text-white placeholder-zinc-500 focus:outline-none text-sm py-1 resize-none"
             style={{ maxHeight: 120, overflowY: 'auto' }}
           />
           {/* Emoji Picker Trigger */}

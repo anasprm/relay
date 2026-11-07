@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { getSupabase } from '@/lib/supabase/browser';
+import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/browser';
 import type { Message } from '@/lib/types';
 
 interface UseRealtimeMessagesParams {
@@ -36,6 +36,7 @@ export function useRealtimeMessages({
   const channelRef = useRef<RealtimeChannel | null>(null);
   const onNewMessageRef = useRef(onNewMessage);
   const onErrorRef = useRef(onError);
+  const warnedRef = useRef(false);
 
   // Keep callbacks latest without re-subscribing
   useEffect(() => {
@@ -46,6 +47,18 @@ export function useRealtimeMessages({
   const subscribe = useCallback(() => {
     if (!conversationId) return;
     if (channelRef.current) return; // already subscribed
+
+    // Without real credentials the client can neither connect nor retry
+    // successfully — skip subscribing instead of flooding the console.
+    if (!isSupabaseConfigured()) {
+      if (!warnedRef.current) {
+        warnedRef.current = true;
+        console.warn(
+          '[Realtime] Skipped: NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY are missing or invalid.',
+        );
+      }
+      return;
+    }
 
     const sb = getSupabase();
     const channel: RealtimeChannel = sb

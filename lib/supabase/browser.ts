@@ -22,14 +22,34 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 let _client: ReturnType<typeof createClient> | null = null;
 
+/**
+ * True when both env vars hold something that looks like a real Supabase
+ * project URL + key. Prevents crashes and endless Realtime retry loops when
+ * the app is built or run without credentials (previews, fresh clones).
+ */
+export function isSupabaseConfigured(): boolean {
+  if (!supabaseUrl || !supabaseAnonKey) return false;
+  if (/your[-_]?supabase|placeholder|example\.(com|org)/i.test(supabaseUrl)) return false;
+  try {
+    const url = new URL(supabaseUrl);
+    // Cloud project URLs look like https://<20-char-ref>.supabase.co
+    return (
+      url.protocol === 'https:' &&
+      /^[a-z0-9]{20}\.supabase\.(co|in)$/i.test(url.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function getSupabase() {
   if (_client) return _client;
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!isSupabaseConfigured()) {
     throw new Error(
-      'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables',
+      'Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.',
     );
   }
-  _client = createClient(supabaseUrl, supabaseAnonKey, {
+  _client = createClient(supabaseUrl!, supabaseAnonKey!, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

@@ -54,6 +54,14 @@ export function ChatComposer({
     };
   }, [isAttachOpen]);
 
+  // Grow the textarea with its content, capped at roughly five lines.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [draft]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -153,8 +161,7 @@ export function ChatComposer({
           disabled={disabled}
           placeholder="Message…"
           rows={1}
-          maxRows={5}
-          className="w-full bg-transparent text-white placeholder-zinc-500 focus:outline-none text-sm py-1"
+          className="w-full max-h-[120px] resize-none overflow-y-auto bg-transparent text-white placeholder-zinc-500 focus:outline-none text-sm py-1"
         />
         {/* Emoji Picker Trigger */}
         <div className="relative ml-2 shrink-0">
