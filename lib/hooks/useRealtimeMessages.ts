@@ -45,6 +45,28 @@ interface UseRealtimeMessagesParams {
     createdBy?: string;
     createdAt?: string;
   }) => void;
+  /** Fired when a message is edited. */
+  onMessageEdited?: (update: {
+    conversationId: string;
+    messageId: string;
+    body: string;
+    editedBy: string;
+    editedAt: string;
+  }) => void;
+  /** Fired when a message is soft-deleted. */
+  onMessageDeleted?: (update: {
+    conversationId: string;
+    messageId: string;
+    deletedBy: string;
+    deletedAt: string;
+  }) => void;
+  /** Fired when a view-once message is burned. */
+  onViewOnceBurned?: (update: {
+    conversationId: string;
+    messageId: string;
+    burnedBy: string;
+    burnedAt: string;
+  }) => void;
   onError?: (error: Error) => void;
 }
 
@@ -54,6 +76,9 @@ export function useRealtimeMessages({
   onReactionUpdate,
   onMessageRead,
   onGroupUpdate,
+  onMessageEdited,
+  onMessageDeleted,
+  onViewOnceBurned,
   onError,
 }: UseRealtimeMessagesParams) {
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -61,6 +86,9 @@ export function useRealtimeMessages({
   const onReactionUpdateRef = useRef(onReactionUpdate);
   const onMessageReadRef = useRef(onMessageRead);
   const onGroupUpdateRef = useRef(onGroupUpdate);
+  const onMessageEditedRef = useRef(onMessageEdited);
+  const onMessageDeletedRef = useRef(onMessageDeleted);
+  const onViewOnceBurnedRef = useRef(onViewOnceBurned);
   const onErrorRef = useRef(onError);
   const warnedRef = useRef(false);
 
@@ -70,8 +98,11 @@ export function useRealtimeMessages({
     onReactionUpdateRef.current = onReactionUpdate;
     onMessageReadRef.current = onMessageRead;
     onGroupUpdateRef.current = onGroupUpdate;
+    onMessageEditedRef.current = onMessageEdited;
+    onMessageDeletedRef.current = onMessageDeleted;
+    onViewOnceBurnedRef.current = onViewOnceBurned;
     onErrorRef.current = onError;
-  }, [onNewMessage, onReactionUpdate, onMessageRead, onGroupUpdate, onError]);
+  }, [onNewMessage, onReactionUpdate, onMessageRead, onGroupUpdate, onMessageEdited, onMessageDeleted, onViewOnceBurned, onError]);
 
   const subscribe = useCallback(() => {
     if (!conversationId) return;
@@ -143,6 +174,39 @@ export function useRealtimeMessages({
         const update = normalizeGroupUpdate(payload);
         if (update && update.event === 'group_left')
           onGroupUpdateRef.current?.(update);
+      })
+      // Message edits.
+      .on('broadcast', { event: 'message_edited' }, ({ payload }) => {
+        try {
+          const update = normalizeMessageEditedUpdate(payload);
+          if (update) onMessageEditedRef.current?.(update);
+        } catch (err) {
+          onErrorRef.current?.(
+            err instanceof Error ? err : new Error('Failed to parse message edit'),
+          );
+        }
+      })
+      // Message soft-deletes.
+      .on('broadcast', { event: 'message_deleted' }, ({ payload }) => {
+        try {
+          const update = normalizeMessageDeletedUpdate(payload);
+          if (update) onMessageDeletedRef.current?.(update);
+        } catch (err) {
+          onErrorRef.current?.(
+            err instanceof Error ? err : new Error('Failed to parse message delete'),
+          );
+        }
+      })
+      // View-once burn events.
+      .on('broadcast', { event: 'view_once_burned' }, ({ payload }) => {
+        try {
+          const update = normalizeViewOnceBurnedUpdate(payload);
+          if (update) onViewOnceBurnedRef.current?.(update);
+        } catch (err) {
+          onErrorRef.current?.(
+            err instanceof Error ? err : new Error('Failed to parse view-once burn'),
+          );
+        }
       })
       .on(
         'postgres_changes',
@@ -321,6 +385,87 @@ function normalizeGroupUpdate(
     name: typeof payload.name === 'string' ? payload.name : undefined,
     createdBy: typeof payload.createdBy === 'string' ? payload.createdBy : undefined,
     createdAt: typeof payload.createdAt === 'string' ? payload.createdAt : undefined,
+  };
+}
+
+/**
+ * Message-edited broadcast payloads are
+ * `{ conversationId, messageId, body, editedBy, editedAt }`.
+ */
+function normalizeMessageEditedUpdate(
+  payload: any,
+): {
+  conversationId: string;
+  messageId: string;
+  body: string;
+  editedBy: string;
+  editedAt: string;
+} | null {
+  if (!payload || typeof payload !== 'object') return null;
+  if (typeof payload.conversationId !== 'string' || !payload.conversationId)
+    return null;
+  if (typeof payload.messageId !== 'string' || !payload.messageId) return null;
+  if (typeof payload.body !== 'string') return null;
+  if (typeof payload.editedBy !== 'string' || !payload.editedBy) return null;
+
+  return {
+    conversationId: payload.conversationId,
+    messageId: payload.messageId,
+    body: payload.body,
+    editedBy: payload.editedBy,
+    editedAt: typeof payload.editedAt === 'string' ? payload.editedAt : new Date().toISOString(),
+  };
+}
+
+/**
+ * Message-deleted broadcast payloads are
+ * `{ conversationId, messageId, deletedBy, deletedAt }`.
+ */
+function normalizeMessageDeletedUpdate(
+  payload: any,
+): {
+  conversationId: string;
+  messageId: string;
+  deletedBy: string;
+  deletedAt: string;
+} | null {
+  if (!payload || typeof payload !== 'object') return null;
+  if (typeof payload.conversationId !== 'string' || !payload.conversationId)
+    return null;
+  if (typeof payload.messageId !== 'string' || !payload.messageId) return null;
+  if (typeof payload.deletedBy !== 'string' || !payload.deletedBy) return null;
+
+  return {
+    conversationId: payload.conversationId,
+    messageId: payload.messageId,
+    deletedBy: payload.deletedBy,
+    deletedAt: typeof payload.deletedAt === 'string' ? payload.deletedAt : new Date().toISOString(),
+  };
+}
+
+/**
+ * View-once burned broadcast payloads are
+ * `{ conversationId, messageId, burnedBy, burnedAt }`.
+ */
+function normalizeViewOnceBurnedUpdate(
+  payload: any,
+): {
+  conversationId: string;
+  messageId: string;
+  burnedBy: string;
+  burnedAt: string;
+} | null {
+  if (!payload || typeof payload !== 'object') return null;
+  if (typeof payload.conversationId !== 'string' || !payload.conversationId)
+    return null;
+  if (typeof payload.messageId !== 'string' || !payload.messageId) return null;
+  if (typeof payload.burnedBy !== 'string' || !payload.burnedBy) return null;
+
+  return {
+    conversationId: payload.conversationId,
+    messageId: payload.messageId,
+    burnedBy: payload.burnedBy,
+    burnedAt: typeof payload.burnedAt === 'string' ? payload.burnedAt : new Date().toISOString(),
   };
 }
 

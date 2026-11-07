@@ -11,6 +11,8 @@ import {
   Camera,
   Headphones,
   Mic as MicIcon,
+  X,
+  Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VoiceRecorder } from './VoiceRecorder';
@@ -27,6 +29,10 @@ interface ChatComposerProps {
   onVoiceRecorded?: (dataUrl: string, fileName: string, mimeType: string) => void;
   /** Whether a voice recording is currently in progress. */
   isRecordingVoice?: boolean;
+  /** The id of the message being edited, or null if not editing. */
+  editingMessageId?: string | null;
+  /** Called to cancel editing mode. */
+  onCancelEdit?: () => void;
 }
 
 export function ChatComposer({
@@ -39,6 +45,8 @@ export function ChatComposer({
   onFileChange,
   onVoiceRecorded,
   isRecordingVoice,
+  editingMessageId,
+  onCancelEdit,
 }: ChatComposerProps) {
   const [isAttachOpen, setIsAttachOpen] = useState(false);
   const attachMenuRef = useRef<HTMLDivElement>(null);
@@ -159,6 +167,21 @@ export function ChatComposer({
         )}
       </div>
 
+      {/* Edit banner */}
+      {editingMessageId && (
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-[#2A2A2C] border border-[#2A2A2C] rounded-lg">
+          <span className="text-[10px] text-[#25D366] font-medium">Editing message</span>
+          <button
+            type="button"
+            onClick={onCancelEdit}
+            className="ml-auto p-1 rounded hover:bg-[#3A3A3C] text-[#8E8E93] hover:text-[#FFFFFF] transition-colors"
+            aria-label="Cancel editing"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
+
       {/* Central Input Container Pill */}
       <div className="flex-1 flex items-center bg-[#121214] rounded-full px-4 py-2 border border-zinc-800/80 focus-within:border-[#25D366] transition-all shadow-inner">
         {/* Voice recording in progress */}
@@ -212,9 +235,9 @@ export function ChatComposer({
               ? "bg-[#1C1C1E] text-[#8E8E93]"
               : "bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600",
           )}
-          aria-label={isEmpty ? "Record voice message" : "Send message"}
+          aria-label={editingMessageId ? "Save edit" : isEmpty ? "Record voice message" : "Send message"}
         >
-          {isEmpty ? <MicIcon className="w-5 h-5 text-black" /> : <Send className="w-5 h-5 text-black" />}
+          {editingMessageId ? <Check className="w-5 h-5 text-black" /> : isEmpty ? <MicIcon className="w-5 h-5 text-black" /> : <Send className="w-5 h-5 text-black" />}
         </button>
       )}
     </form>

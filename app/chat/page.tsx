@@ -21,6 +21,7 @@ import { ContactPanel } from '@/components/chat/ContactPanel';
 import {
   ArrowRight,
   CheckCheck,
+  Edit,
   FileText,
   Image as ImageIcon,
   LogOut,
@@ -38,6 +39,7 @@ import {
   Settings,
   Smile,
   Sparkles,
+  Trash2,
   User,
   UserRound,
   Users,
@@ -53,6 +55,7 @@ import { toggleReaction } from '@/lib/actions/reactions';
 import { markConversationRead } from '@/lib/actions/reads';
 import { uploadAttachment } from '@/lib/actions/uploadAttachment';
 import { createGroup, addGroupMember, removeGroupMember, leaveGroup } from '@/lib/actions/groups';
+import { editMessage, deleteMessage, burnViewOnce } from '@/lib/actions/messages';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { Attachment, Conversation, Message, User } from '@/lib/types';
 
@@ -332,6 +335,9 @@ type MessageBubbleProps = {
   isMe: boolean;
   groupStart: boolean;
   onReaction?: (messageId: string, emoji: string) => void;
+  onEdit?: (messageId: string) => void;
+  onDelete?: (messageId: string) => void;
+  onBurnViewOnce?: (messageId: string) => void;
 };
 
 function formatTime(dateString: string) {
@@ -368,10 +374,17 @@ function MessageBubble({
   isMe,
   groupStart,
   onReaction,
+  onEdit,
+  onDelete,
+  onBurnViewOnce,
 }: MessageBubbleProps) {
   const time = formatTime(message.createdAt);
   const myReactionId = isMe ? 'usr_me' : '';
   const myReaction = myReactionId ? message.reactions?.[myReactionId] : null;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const isDeleted = message.is_deleted || message.text === 'This message was deleted';
+  const isBurned = message.attachment === null && message.text?.startsWith('🔥');
+  const isEdited = !!message.editedAt;
   const isSingleEmoji =
     message.text.trim().length <= 3 &&
     /^[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F000}-\u{1FAFF}]$/u.test(
@@ -419,16 +432,27 @@ function MessageBubble({
               : 'bg-[#1C1C1E] border border-[#2A2A2C] text-[#FFFFFF] rounded-t-xl rounded-l-xl rounded-b-xl rounded-tl-none',
           )}
         >
-          {message.text && (
+          {message.text && !isDeleted && !isBurned ? (
             <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
               {isSingleEmoji ? (
                 <span className="text-[28px] leading-none">{message.text}</span>
               ) : (
                 renderInline(message.text, `m-${message.id}`)
               )}
+              {isEdited && (
+                <span className="ml-1 text-[10px] text-[#8E8E93]">edited</span>
+              )}
             </p>
-          )}
-          {message.attachment && (
+          ) : isDeleted ? (
+            <p className="text-[12px] text-[#8E8E93]/60 italic">
+              This message was deleted
+            </p>
+          ) : isBurned ? (
+            <p className="text-[12px] text-[#8E8E93]/60 italic">
+              🔥 This view-once media has been burned.
+            </p>
+          ) : null}
+          {message.attachment && !isDeleted && !isBurned && (
             <div className="mt-1.5 flex items-center gap-2">
               {message.attachment.kind === 'image' && (
                 <img
@@ -543,6 +567,47 @@ function MessageBubble({
               ));
             })()}
           </div>
+
+          {/* Action menu (edit / delete) for own messages */}
+          {isMe && !isDeleted && !isBurned && (
+            <div
+              className="relative inline-block"
+              onMouseEnter={() => setMenuOpen(true)}
+              onMouseLeave={() => setMenuOpen(false)}
+            >
+              <button
+                type="button"
+                className="p-1 rounded hover:bg-[#3A3A3C] text-[#8E8E93] hover:text-[#FFFFFF] transition-colors"
+                aria-label="More actions"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 mt-1 w-48 bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl shadow-lg py-1 z-50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onEdit?.(message.id);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#FFFFFF] hover:bg-[#2A2A2C] transition-colors"
+                  >
+                    <Edit className="w-4 h-4" /> Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onDelete?.(message.id);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#FF3B30] hover:bg-[#FF3B30]/20 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" /> Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {isMe && (
@@ -846,6 +911,7 @@ export default function ChatPage() {
     size: number;
   } | null>(null);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [chatSearchOpen, setChatSearchOpen] = useState(false);
   const moreOptionsRef = useRef<HTMLButtonElement>(null);
@@ -1032,6 +1098,45 @@ export default function ChatPage() {
           break;
       }
     },
+    onMessageEdited: ({ conversationId, messageId, body, editedBy, editedAt }) => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== messageId) return m;
+          return {
+            ...m,
+            text: body,
+            editedAt,
+            // If we're currently editing this message locally, cancel the edit.
+            ...(editingMessageId === messageId ? { editingMessageId: null } : {}),
+          };
+        }),
+      );
+    },
+    onMessageDeleted: ({ conversationId, messageId }) => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== messageId) return m;
+          return {
+            ...m,
+            text: 'This message was deleted',
+            is_deleted: true,
+            attachment: null,
+          };
+        }),
+      );
+    },
+    onViewOnceBurned: ({ conversationId, messageId }) => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== messageId) return m;
+          return {
+            ...m,
+            attachment: null,
+            text: '🔥 This view-once media has been burned.',
+          };
+        }),
+      );
+    },
     onError: (err) => {
       console.warn('[Realtime] Subscription error:', err.message);
     },
@@ -1180,6 +1285,15 @@ export default function ChatPage() {
   const handleSend = useCallback(async () => {
     if (isRecordingVoice) return;
     const text = draft.trim();
+
+    // Edit mode: update an existing message instead of creating a new one.
+    if (editingMessageId) {
+      await handleEditMessage(editingMessageId, text);
+      setDraft('');
+      setEditingMessageId(null);
+      return;
+    }
+
     if (!text && !pendingAttachment) return;
 
     const isAI = activeId === 'conv_relay_assistant';
@@ -1358,7 +1472,7 @@ export default function ChatPage() {
           console.error('[chat] Supabase sync failed:', error);
         });
     }
-  }, [draft, pendingAttachment, activeId, token, toast]);
+  }, [draft, pendingAttachment, activeId, token, toast, editingMessageId]);
 
   const handleVoiceRecorded = useCallback(
     async (dataUrl: string, fileName: string, mimeType: string) => {
@@ -1432,6 +1546,60 @@ export default function ChatPage() {
           .catch((error) => {
             console.error('[chat] Voice message sync failed:', error);
           });
+      }
+    },
+    [token, activeId, toast],
+  );
+
+  /* -------------------------------------------------------------- */
+  /* Message edit / delete / view-once-burn                         */
+  /* -------------------------------------------------------------- */
+
+  const handleEditMessage = useCallback(
+    async (messageId: string, newBody: string) => {
+      if (!token || !activeId) return;
+
+      const result = await editMessage({
+        token,
+        conversationId: activeId,
+        messageId,
+        body: newBody,
+      });
+      if (!result.success) {
+        toast('Edit failed: ' + result.error, 'error');
+        setEditingMessageId(null);
+      }
+    },
+    [token, activeId, toast],
+  );
+
+  const handleDeleteMessage = useCallback(
+    async (messageId: string) => {
+      if (!token || !activeId) return;
+
+      const result = await deleteMessage({
+        token,
+        conversationId: activeId,
+        messageId,
+      });
+      if (!result.success) {
+        toast('Delete failed: ' + result.error, 'error');
+      }
+    },
+    [token, activeId, toast],
+  );
+
+  const handleBurnViewOnce = useCallback(
+    async (messageId: string) => {
+      if (!token || !activeId) return;
+
+      const result = await burnViewOnce({
+        token,
+        conversationId: activeId,
+        messageId,
+      });
+      if (!result.success) {
+        toast('Burn failed: ' + result.error, 'error');
       }
     },
     [token, activeId, toast],
@@ -1657,6 +1825,9 @@ export default function ChatPage() {
                 5 * 60 * 1000
               }
               onReaction={(emoji) => handleReaction(msg.id, emoji)}
+              onEdit={(messageId) => setEditingMessageId(messageId)}
+              onDelete={handleDeleteMessage}
+              onBurnViewOnce={handleBurnViewOnce}
             />
           ))
         ) : (
@@ -1680,6 +1851,8 @@ export default function ChatPage() {
             onFileChange={handleFileChange}
             onVoiceRecorded={handleVoiceRecorded}
             isRecordingVoice={isRecordingVoice}
+            editingMessageId={editingMessageId}
+            onCancelEdit={() => setEditingMessageId(null)}
             fileInputRef={fileInputRef}
           />
         </div>
@@ -1811,6 +1984,9 @@ export default function ChatPage() {
                     5 * 60 * 1000
                   }
                   onReaction={(emoji) => handleReaction(msg.id, emoji)}
+                  onEdit={(messageId) => setEditingMessageId(messageId)}
+                  onDelete={handleDeleteMessage}
+                  onBurnViewOnce={handleBurnViewOnce}
                   searchQuery={chatSearchQuery}
                 />
               ))
@@ -1842,6 +2018,8 @@ export default function ChatPage() {
         onFileChange={handleFileChange}
         onVoiceRecorded={handleVoiceRecorded}
         isRecordingVoice={isRecordingVoice}
+        editingMessageId={editingMessageId}
+        onCancelEdit={() => setEditingMessageId(null)}
         fileInputRef={fileInputRef}
       />
 
