@@ -213,6 +213,11 @@ export async function dbGetMessages(
   return items;
 }
 
+export async function dbGetAllMessages() {
+  const db = await getDb();
+  return db.getAll('messages');
+}
+
 export async function dbDeleteMessage(messageId: string) {
   const db = await getDb();
   await db.delete('messages', messageId);
@@ -386,4 +391,4 @@ export async function dbDeleteDatabase() {
   return deleteDB('relay-db');
 }
 
-export default { getDb, bootstrapClientState, dbPutConversation, dbGetConversation, dbGetAllConversations, dbPutMessage, dbGetMessages, dbDeleteMessage, dbPutUser, dbGetUser, dbGetAllUsers, dbPutMediaCache, dbGetMediaCache, dbPutOutboxMessage, dbGetOutboxMessages, dbIncrementOutboxRetries };
+export default { getDb, bootstrapClientState, dbPutConversation, dbGetConversation, dbGetAllConversations, dbPutMessage, dbGetMessages, dbGetAllMessages, dbDeleteMessage, dbPutUser, dbGetUser, dbGetAllUsers, dbPutMediaCache, dbGetMediaCache, dbPutOutboxMessage, dbGetOutboxMessages, dbIncrementOutboxRetries };

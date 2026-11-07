@@ -18,6 +18,7 @@ import { BulletproofDropdown } from '@/components/chat/BulletproofDropdown';
 import { CopilotPanel } from '@/components/chat/CopilotPanel';
 import { ChatComposer } from '@/components/chat/ChatComposer';
 import { ContactPanel } from '@/components/chat/ContactPanel';
+import { SearchModal } from '@/components/chat/SearchModal';
 import {
   ArrowRight,
   CheckCheck,
@@ -338,6 +339,7 @@ type MessageBubbleProps = {
   onEdit?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
   onBurnViewOnce?: (messageId: string) => void;
+  containerRef?: React.Ref<HTMLDivElement>;
 };
 
 function formatTime(dateString: string) {
@@ -377,6 +379,7 @@ function MessageBubble({
   onEdit,
   onDelete,
   onBurnViewOnce,
+  containerRef,
 }: MessageBubbleProps) {
   const time = formatTime(message.createdAt);
   const myReactionId = isMe ? 'usr_me' : '';
@@ -394,6 +397,7 @@ function MessageBubble({
 
   return (
     <div
+      ref={containerRef}
       className={cn(
         'flex w-full gap-2 msg-row',
         isMe ? 'justify-end' : 'justify-start',
@@ -902,6 +906,8 @@ export default function ChatPage() {
   const [isNewChatInputOpen, setIsNewChatInputOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showContactPanel, setShowContactPanel] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [isCalling, setIsCalling] = useState(false);
   const [callType, setCallType] = useState<'audio' | 'video'>('audio');
   const [pendingAttachment, setPendingAttachment] = useState<{
@@ -917,6 +923,7 @@ export default function ChatPage() {
   const moreOptionsRef = useRef<HTMLButtonElement>(null);
   const profileMenuRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   useEffect(() => {
     if (loading) return;
@@ -1141,6 +1148,21 @@ export default function ChatPage() {
       console.warn('[Realtime] Subscription error:', err.message);
     },
   });
+
+  /* -------------------------------------------------------------- */
+  /* Global search hotkey (Ctrl+F / Cmd+K)                          */
+  /* -------------------------------------------------------------- */
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   /* -------------------------------------------------------------- */
   /* Navigation helpers                                             */
@@ -1606,6 +1628,53 @@ export default function ChatPage() {
   );
 
   /* -------------------------------------------------------------- */
+  /* Message search                                                 */
+  /* -------------------------------------------------------------- */
+
+  const registerMessageRef = useCallback(
+    (id: string | null, el: HTMLDivElement | null) => {
+      if (!id) return;
+      if (el) messageRefs.current.set(id, el);
+      else messageRefs.current.delete(id);
+    },
+    [],
+  );
+
+  const handleSearchSelect = useCallback(
+    async ({ conversationId, messageId }: { conversationId: string; messageId: string }) => {
+      setSearchOpen(false);
+
+      // Switch to the target conversation if needed.
+      if (activeId !== conversationId) {
+        const conv = conversations.find((c) => c.id === conversationId);
+        if (conv) {
+          setActiveId(conversationId);
+          // Wait for the conversation to load, then scroll + highlight.
+          setHighlightedMessageId(messageId);
+          setTimeout(() => scrollToMessage(messageId), 100);
+          return;
+        }
+      }
+
+      // Same conversation — just highlight and scroll.
+      setHighlightedMessageId(messageId);
+      scrollToMessage(messageId);
+    },
+    [activeId, conversations],
+  );
+
+  const scrollToMessage = useCallback((messageId: string) => {
+    const el = messageRefs.current.get(messageId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Temporary highlight pulse
+    el.classList.add('ring-2', 'ring-accent', 'ring-offset-2', 'ring-offset-[#0A0A0C]');
+    setTimeout(() => {
+      el.classList.remove('ring-2', 'ring-accent', 'ring-offset-2', 'ring-offset-[#0A0A0C]');
+    }, 2000);
+  }, []);
+
+  /* -------------------------------------------------------------- */
   /* Group conversation actions                                     */
   /* -------------------------------------------------------------- */
 
@@ -1828,6 +1897,7 @@ export default function ChatPage() {
               onEdit={(messageId) => setEditingMessageId(messageId)}
               onDelete={handleDeleteMessage}
               onBurnViewOnce={handleBurnViewOnce}
+              containerRef={(el) => registerMessageRef(msg.id, el)}
             />
           ))
         ) : (
@@ -1902,6 +1972,13 @@ export default function ChatPage() {
               </button>
             </>
           ) : null}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]"
+            aria-label="Search messages"
+          >
+            <Search size={18} className="h-4 w-4" />
+          </button>
           {showProfileMenu && (
             <BulletproofDropdown
               open={showProfileMenu}
@@ -1987,6 +2064,7 @@ export default function ChatPage() {
                   onEdit={(messageId) => setEditingMessageId(messageId)}
                   onDelete={handleDeleteMessage}
                   onBurnViewOnce={handleBurnViewOnce}
+                  containerRef={(el) => registerMessageRef(msg.id, el)}
                   searchQuery={chatSearchQuery}
                 />
               ))
@@ -2121,6 +2199,13 @@ export default function ChatPage() {
           </div>
         </div>
       )}
+    {searchOpen && (
+      <SearchModal
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onSelect={handleSearchSelect}
+      />
+    )}
     </div>
   );
 }
