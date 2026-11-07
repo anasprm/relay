@@ -47,6 +47,7 @@ import { cn } from '@/lib/utils';
 import { dbPutConversation, dbGetAllConversations, dbPutMessage } from '@/lib/db';
 import { useRealtimeMessages } from '@/lib/hooks/useRealtimeMessages';
 import { sendMessage } from '@/lib/actions/sendMessage';
+import { toggleReaction } from '@/lib/actions/reactions';
 import type { Conversation, Message, User } from '@/lib/types';
 
 /**
@@ -75,6 +76,25 @@ function cacheMessage(msg: Message): void {
     isEncrypted: false,
     ephemeral: msg.ephemeral,
   }).catch((err) => console.error('[db] Failed to persist message:', err));
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
+/** Builds a `Record<userId, emoji>` map for seeded demo reactions. */
+function seededReactions(
+  emoji: string,
+  count: number,
+  offset = 0,
+): Record<string, string> {
+  return Object.fromEntries(
+    Array.from({ length: count }, (_, i) => [`usr_seed_${offset + i}`, emoji]),
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -171,7 +191,10 @@ const MOCK_CONVERSATIONS: Conversation[] = [
       ephemeral: false,
       viewOnce: false,
       viewOnceOpened: false,
-      reactions: { '🔥': 3, '💎': 2 },
+      reactions: {
+        ...seededReactions('🔥', 3),
+        ...seededReactions('💎', 2, 3),
+      },
       readBy: ['usr_me'],
       starred: false,
       createdAt: new Date(Date.now() - 600000).toISOString(),
@@ -212,7 +235,7 @@ const MOCK_CONVERSATIONS: Conversation[] = [
       ephemeral: false,
       viewOnce: false,
       viewOnceOpened: false,
-      reactions: { '🚀': 4 },
+      reactions: seededReactions('🚀', 4),
       readBy: ['usr_me'],
       starred: true,
       createdAt: new Date(Date.now() - 1800000).toISOString(),
@@ -247,7 +270,7 @@ const MOCK_MESSAGES: Message[] = [
     ephemeral: false,
     viewOnce: false,
     viewOnceOpened: false,
-    reactions: { '🔥': 3 },
+    reactions: seededReactions('🔥', 3),
     readBy: ['usr_me'],
     starred: false,
     createdAt: new Date(Date.now() - 900000).toISOString(),
@@ -304,7 +327,7 @@ type MessageBubbleProps = {
   message: Message;
   isMe: boolean;
   groupStart: boolean;
-  onReaction?: (emoji: string) => void;
+  onReaction?: (messageId: string, emoji: string) => void;
 };
 
 function formatTime(dateString: string) {
@@ -343,6 +366,8 @@ function MessageBubble({
   onReaction,
 }: MessageBubbleProps) {
   const time = formatTime(message.createdAt);
+  const myReactionId = isMe ? 'usr_me' : '';
+  const myReaction = myReactionId ? message.reactions?.[myReactionId] : null;
   const readByMe = isMe && message.readBy?.includes('usr_me');
   const isSingleEmoji =
     message.text.trim().length <= 3 &&
@@ -441,21 +466,36 @@ function MessageBubble({
               isMe ? 'flex-row-reverse' : 'flex-row',
             )}
           >
-            {Object.entries(message.reactions || {}).map(([emoji, count]) => (
+            {(() => {
+              const counts = new Map<string, { count: number; mine: boolean }>();
+              for (const emoji of Object.values(message.reactions || {})) {
+                const entry = counts.get(emoji) || { count: 0, mine: false };
+                entry.count += 1;
+                counts.set(emoji, entry);
+              }
+              if (myReaction) {
+                const entry = counts.get(myReaction) || { count: 0, mine: false };
+                entry.mine = true;
+                counts.set(myReaction, entry);
+              }
+              return Array.from(counts.entries()).map(([emoji, stat]) => (
                 <button
                   key={emoji}
                   type="button"
-                  onClick={() => onReaction?.(emoji)}
+                  onClick={() => onReaction?.(message.id, emoji)}
                   className={cn(
                     'flex h-5 items-center gap-1 rounded-full border px-1.5 text-[11px] leading-none transition-all active:scale-[0.97]',
-                    'border-[#2A2A2C] bg-[#121216] text-[#8E8E93] hover:border-[#3A3A3C] hover:text-[#FFFFFF]',
+                    stat.mine
+                      ? 'border-accent/40 bg-accent-soft text-accent'
+                      : 'border-[#2A2A2C] bg-[#121216] text-[#8E8E93] hover:border-[#3A3A3C] hover:text-[#FFFFFF]',
                   )}
                   aria-label={`React ${emoji}`}
                 >
                   <span>{emoji}</span>
-                  {count > 1 && <span className="tabular-nums">{count}</span>}
+                  {stat.count > 1 && <span className="tabular-nums">{stat.count}</span>}
                 </button>
-              ))}
+              ));
+            })()}
           </div>
         </div>
 
@@ -736,6 +776,10 @@ export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  // Remote reaction updates keyed by message id: { [messageId]: Record<userId, emoji> }
+  const [reactionsByMessage, setReactionsByMessage] = useState<Record<string, Record<string, string>>>(
+    {},
+  );
   const [draft, setDraft] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'unread' | 'favorites' | 'groups'>('all');
@@ -800,7 +844,12 @@ export default function ChatPage() {
   }, [loading, user, token, router, conversations.length]);
 
   const activeConversation = conversations.find((c) => c.id === activeId);
-  const visibleMessages = (messages || [])
+  const effectiveMessages = (messages || []).map((m) => {
+    const remote = reactionsByMessage[m.id];
+    if (!remote || Object.keys(remote).length === 0) return m;
+    return { ...m, reactions: { ...m.reactions, ...remote } };
+  });
+  const visibleMessages = effectiveMessages
     .filter((m) => m.conversationId === activeId)
     .filter((m) => {
       if (!chatSearchQuery.trim()) return true;
@@ -864,6 +913,12 @@ export default function ChatPage() {
             : c,
         ),
       );
+    },
+    onReactionUpdate: ({ messageId, reactions }) => {
+      setReactionsByMessage((prev) => ({
+        ...prev,
+        [messageId]: reactions,
+      }));
     },
     onError: (err) => {
       console.warn('[Realtime] Subscription error:', err.message);
@@ -1198,9 +1253,52 @@ export default function ChatPage() {
     toast('Chat cleared', 'info');
   }, [toast]);
 
-  const handleReaction = useCallback((emoji: string) => {
-    toast(`Reacted ${emoji}`, 'success');
-  }, []);
+  const handleReaction = useCallback(
+    async (messageId: string, emoji: string) => {
+      if (!token || !user) return;
+
+      const isDemoMessage = !isUuid(messageId);
+
+      // Optimistically toggle the reaction in local state so the bubble updates
+      // instantly. Broadcast uses `self: false`, so the sender never receives
+      // their own echo back — the local update is what they see.
+      const previousMessages = messages;
+      const messageIndex = messages.findIndex((m) => m.id === messageId);
+      if (messageIndex !== -1) {
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.id !== messageId) return m;
+            const next = { ...m, reactions: { ...m.reactions } };
+            if (next.reactions[user.id] === emoji) {
+              delete next.reactions[user.id];
+            } else {
+              next.reactions[user.id] = emoji;
+            }
+            return next;
+          }),
+        );
+      }
+
+      // Demo / locally-created messages (non-UUID ids) aren't in Supabase, so
+      // there is nothing to persist — the optimistic local toggle is enough.
+      if (isDemoMessage) return;
+
+      const result = await toggleReaction({
+        token,
+        conversationId: activeId || '',
+        messageId,
+        emoji,
+      });
+
+      if (!result.success) {
+        // Revert the optimistic update on failure.
+        setMessages(previousMessages);
+        console.error('[chat] reaction sync failed:', result.error);
+        toast('Reaction failed', 'error');
+      }
+    },
+    [token, activeId, user, messages, toast],
+  );
 
   /* -------------------------------------------------------------- */
   /* Mobile chat view                                               */
@@ -1262,7 +1360,7 @@ export default function ChatPage() {
                   new Date(messages[i - 1]?.createdAt ?? 0).getTime() >
                 5 * 60 * 1000
               }
-              onReaction={handleReaction}
+              onReaction={(emoji) => handleReaction(msg.id, emoji)}
             />
           ))
         ) : (
@@ -1404,7 +1502,7 @@ export default function ChatPage() {
                       new Date(messages[i - 1]?.createdAt ?? 0).getTime() >
                     5 * 60 * 1000
                   }
-                  onReaction={handleReaction}
+                  onReaction={(emoji) => handleReaction(msg.id, emoji)}
                   searchQuery={chatSearchQuery}
                 />
               ))

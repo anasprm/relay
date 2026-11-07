@@ -1,7 +1,8 @@
 'use server';
 
-import { createHash } from 'node:crypto';
 import { parseSessionToken } from '@/lib/server/authStore';
+import { stableUuid, usernameFor } from '@/lib/server/relayIds';
+import { broadcastToConversation } from '@/lib/server/realtime';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { Attachment, Message } from '@/lib/types';
 
@@ -18,32 +19,6 @@ export interface SendMessageInput {
 export type SendMessageResult =
   | { success: true; message: Message }
   | { success: false; error: string };
-
-/**
- * Turns an arbitrary relay id (`conv_general_community`, `usr_me`, …) into a
- * stable UUID so it can be used as a foreign key in the Supabase schema.
- */
-function stableUuid(seed: string): string {
-  const hex = createHash('sha1').update(seed).digest('hex');
-  const variant = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
-  return [
-    hex.slice(0, 8),
-    hex.slice(8, 12),
-    `5${hex.slice(13, 16)}`,
-    `${variant}${hex.slice(17, 20)}`,
-    hex.slice(20, 32),
-  ].join('-');
-}
-
-function usernameFor(userId: string, email: string | null): string {
-  const base =
-    (email?.split('@')[0] || userId)
-      .toLowerCase()
-      .replace(/[^a-z0-9_]/g, '_')
-      .slice(0, 24) || 'relay_user';
-  const suffix = userId.replace(/[^a-z0-9]/gi, '').slice(-6) || 'local';
-  return `${base}_${suffix}`;
-}
 
 /**
  * Persists a message with the service-role client (bypassing RLS for the write)
@@ -156,53 +131,15 @@ export async function sendMessage(input: SendMessageInput): Promise<SendMessageR
       ...(input.clientId ? { clientId: input.clientId } : {}),
     } as Message;
 
-    await broadcastMessage(conversationId, message, input.clientId);
+    await broadcastToConversation(conversationId, 'message', {
+      ...message,
+      clientId: input.clientId,
+    });
 
     return { success: true, message };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Could not send message.';
     console.error('[sendMessage]', message);
     return { success: false, error: message };
-  }
-}
-
-/**
- * Publishes the message over Realtime Broadcast, which is not subject to RLS.
- * Clients subscribe to `conversation:<relay conversation id>`.
- */
-async function broadcastMessage(
-  conversationId: string,
-  message: Message,
-  clientId?: string,
-): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return;
-
-  try {
-    const response = await fetch(`${url}/realtime/v1/api/broadcast`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        messages: [
-          {
-            topic: `conversation:${conversationId}`,
-            event: 'message',
-            payload: { ...message, clientId },
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const detail = await response.text().catch(() => '');
-      console.error('[sendMessage] broadcast failed', response.status, detail);
-    }
-  } catch (error) {
-    console.error('[sendMessage] broadcast error', error);
   }
 }

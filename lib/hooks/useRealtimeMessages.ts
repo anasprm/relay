@@ -25,24 +25,29 @@ import type { Message } from '@/lib/types';
 interface UseRealtimeMessagesParams {
   conversationId: string | null;
   onNewMessage: (message: Message) => void;
+  /** Fired when another tab/user changes a reaction on a message. */
+  onReactionUpdate?: (update: { messageId: string; reactions: Record<string, string> }) => void;
   onError?: (error: Error) => void;
 }
 
 export function useRealtimeMessages({
   conversationId,
   onNewMessage,
+  onReactionUpdate,
   onError,
 }: UseRealtimeMessagesParams) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const onNewMessageRef = useRef(onNewMessage);
+  const onReactionUpdateRef = useRef(onReactionUpdate);
   const onErrorRef = useRef(onError);
   const warnedRef = useRef(false);
 
   // Keep callbacks latest without re-subscribing
   useEffect(() => {
     onNewMessageRef.current = onNewMessage;
+    onReactionUpdateRef.current = onReactionUpdate;
     onErrorRef.current = onError;
-  }, [onNewMessage, onError]);
+  }, [onNewMessage, onReactionUpdate, onError]);
 
   const subscribe = useCallback(() => {
     if (!conversationId) return;
@@ -77,6 +82,11 @@ export function useRealtimeMessages({
             err instanceof Error ? err : new Error('Failed to parse realtime message'),
           );
         }
+      })
+      // Reaction changes made by anyone in the conversation.
+      .on('broadcast', { event: 'reaction' }, ({ payload }) => {
+        const update = normalizeReactionUpdate(payload);
+        if (update) onReactionUpdateRef.current?.(update);
       })
       .on(
         'postgres_changes',
@@ -167,6 +177,26 @@ function normalizeBroadcastMessage(payload: any): Message | null {
     createdAt: payload.createdAt ?? new Date().toISOString(),
     ...(payload.clientId ? { clientId: payload.clientId } : {}),
   } as Message;
+}
+
+/**
+ * Reaction broadcast payloads are `{ messageId, reactions }` where reactions is
+ * a `Record<userId, emoji>` map.
+ */
+function normalizeReactionUpdate(
+  payload: any,
+): { messageId: string; reactions: Record<string, string> } | null {
+  if (!payload || typeof payload !== 'object') return null;
+  if (typeof payload.messageId !== 'string' || !payload.messageId) return null;
+
+  const reactions: Record<string, string> = {};
+  if (payload.reactions && typeof payload.reactions === 'object') {
+    for (const [userId, emoji] of Object.entries(payload.reactions)) {
+      if (typeof emoji === 'string' && emoji) reactions[userId] = emoji;
+    }
+  }
+
+  return { messageId: payload.messageId, reactions };
 }
 
 /**
