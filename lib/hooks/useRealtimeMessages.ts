@@ -34,6 +34,17 @@ interface UseRealtimeMessagesParams {
     messageIds: string[];
     readAt: string;
   }) => void;
+  /** Fired when group membership or metadata changes in this conversation. */
+  onGroupUpdate?: (update: {
+    event: 'group_created' | 'member_added' | 'member_removed' | 'group_left';
+    conversationId: string;
+    userId: string;
+    messageIds?: string[];
+    participants?: string[];
+    name?: string;
+    createdBy?: string;
+    createdAt?: string;
+  }) => void;
   onError?: (error: Error) => void;
 }
 
@@ -42,12 +53,14 @@ export function useRealtimeMessages({
   onNewMessage,
   onReactionUpdate,
   onMessageRead,
+  onGroupUpdate,
   onError,
 }: UseRealtimeMessagesParams) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const onNewMessageRef = useRef(onNewMessage);
   const onReactionUpdateRef = useRef(onReactionUpdate);
   const onMessageReadRef = useRef(onMessageRead);
+  const onGroupUpdateRef = useRef(onGroupUpdate);
   const onErrorRef = useRef(onError);
   const warnedRef = useRef(false);
 
@@ -56,8 +69,9 @@ export function useRealtimeMessages({
     onNewMessageRef.current = onNewMessage;
     onReactionUpdateRef.current = onReactionUpdate;
     onMessageReadRef.current = onMessageRead;
+    onGroupUpdateRef.current = onGroupUpdate;
     onErrorRef.current = onError;
-  }, [onNewMessage, onReactionUpdate, onMessageRead, onError]);
+  }, [onNewMessage, onReactionUpdate, onMessageRead, onGroupUpdate, onError]);
 
   const subscribe = useCallback(() => {
     if (!conversationId) return;
@@ -108,6 +122,27 @@ export function useRealtimeMessages({
             err instanceof Error ? err : new Error('Failed to parse read receipt'),
           );
         }
+      })
+      // Group membership / metadata changes.
+      .on('broadcast', { event: 'group_created' }, ({ payload }) => {
+        const update = normalizeGroupUpdate(payload);
+        if (update && update.event === 'group_created')
+          onGroupUpdateRef.current?.(update);
+      })
+      .on('broadcast', { event: 'member_added' }, ({ payload }) => {
+        const update = normalizeGroupUpdate(payload);
+        if (update && update.event === 'member_added')
+          onGroupUpdateRef.current?.(update);
+      })
+      .on('broadcast', { event: 'member_removed' }, ({ payload }) => {
+        const update = normalizeGroupUpdate(payload);
+        if (update && update.event === 'member_removed')
+          onGroupUpdateRef.current?.(update);
+      })
+      .on('broadcast', { event: 'group_left' }, ({ payload }) => {
+        const update = normalizeGroupUpdate(payload);
+        if (update && update.event === 'group_left')
+          onGroupUpdateRef.current?.(update);
       })
       .on(
         'postgres_changes',
@@ -243,6 +278,49 @@ function normalizeMessageReadUpdate(
     userId: payload.userId,
     messageIds: payload.messageIds.filter((id: any) => typeof id === 'string'),
     readAt: typeof payload.readAt === 'string' ? payload.readAt : new Date().toISOString(),
+  };
+}
+
+/**
+ * Group broadcast payloads are
+ * `{ event, conversationId, userId, participants?, name?, createdBy?, createdAt? }`.
+ */
+function normalizeGroupUpdate(
+  payload: any,
+): {
+  event: 'group_created' | 'member_added' | 'member_removed' | 'group_left';
+  conversationId: string;
+  userId: string;
+  messageIds?: string[];
+  participants?: string[];
+  name?: string;
+  createdBy?: string;
+  createdAt?: string;
+} | null {
+  if (!payload || typeof payload !== 'object') return null;
+  if (typeof payload.conversationId !== 'string' || !payload.conversationId)
+    return null;
+  if (typeof payload.userId !== 'string' || !payload.userId) return null;
+
+  const validEvents: Record<string, boolean> = {
+    group_created: true,
+    member_added: true,
+    member_removed: true,
+    group_left: true,
+  };
+  const event = payload.event;
+  if (!validEvents[event]) return null;
+
+  return {
+    event,
+    conversationId: payload.conversationId,
+    userId: payload.userId,
+    participants: Array.isArray(payload.participants)
+      ? payload.participants.filter((id: any) => typeof id === 'string')
+      : undefined,
+    name: typeof payload.name === 'string' ? payload.name : undefined,
+    createdBy: typeof payload.createdBy === 'string' ? payload.createdBy : undefined,
+    createdAt: typeof payload.createdAt === 'string' ? payload.createdAt : undefined,
   };
 }
 

@@ -17,6 +17,7 @@ import { SidebarNavigationContainer } from '@/components/chat/SidebarNavigationC
 import { BulletproofDropdown } from '@/components/chat/BulletproofDropdown';
 import { CopilotPanel } from '@/components/chat/CopilotPanel';
 import { ChatComposer } from '@/components/chat/ChatComposer';
+import { ContactPanel } from '@/components/chat/ContactPanel';
 import {
   ArrowRight,
   CheckCheck,
@@ -51,6 +52,8 @@ import { sendMessage } from '@/lib/actions/sendMessage';
 import { toggleReaction } from '@/lib/actions/reactions';
 import { markConversationRead } from '@/lib/actions/reads';
 import { uploadAttachment } from '@/lib/actions/uploadAttachment';
+import { createGroup, addGroupMember, removeGroupMember, leaveGroup } from '@/lib/actions/groups';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { Attachment, Conversation, Message, User } from '@/lib/types';
 
 /**
@@ -833,6 +836,7 @@ export default function ChatPage() {
   const [newChatInput, setNewChatInput] = useState('');
   const [isNewChatInputOpen, setIsNewChatInputOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showContactPanel, setShowContactPanel] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
   const [callType, setCallType] = useState<'audio' | 'video'>('audio');
   const [pendingAttachment, setPendingAttachment] = useState<{
@@ -981,6 +985,52 @@ export default function ChatPage() {
           return { ...m, readBy: [...(m.readBy ?? []), userId] };
         }),
       );
+    },
+    onGroupUpdate: ({ event, conversationId, userId, participants, name, createdBy }) => {
+      // Group membership / metadata changes via Realtime broadcast.
+      switch (event) {
+        case 'group_created':
+          // Only add if we're not already tracking this conversation.
+          if (
+            userId !== user?.id &&
+            !conversations.some((c) => c.id === conversationId)
+          ) {
+            setConversations((prev) => [
+              ...prev,
+              {
+                id: conversationId,
+                kind: 'group',
+                title: name || 'Group chat',
+                createdBy: createdBy ?? null,
+                memberCount: (participants ?? []).length,
+                participants: [],
+                other: null,
+                lastMessage: null,
+                unreadCount: 1,
+                modes: { anonymity: false, vanish: false },
+                locked: false,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                messageCount: 0,
+              } as Conversation,
+            ]);
+          }
+          break;
+        case 'member_added':
+        case 'member_removed':
+          // ContactPanel re-renders from Supabase when reopened; no local
+          // state to update here beyond a possible conversation refresh.
+          break;
+        case 'group_left':
+          if (userId === user?.id) {
+            setShowContactPanel(false);
+            setActiveId(null);
+            setConversations((prev) =>
+              prev.filter((c) => c.id !== conversationId),
+            );
+          }
+          break;
+      }
     },
     onError: (err) => {
       console.warn('[Realtime] Subscription error:', err.message);
@@ -1387,6 +1437,79 @@ export default function ChatPage() {
     [token, activeId, toast],
   );
 
+  /* -------------------------------------------------------------- */
+  /* Group conversation actions                                     */
+  /* -------------------------------------------------------------- */
+
+  const handleAddGroupMember = useCallback(
+    async (username: string): Promise<string | null> => {
+      if (!token || !activeId || !activeConversation?.is_group) return null;
+
+      // Look up the target user by username to get their relay id and display info
+      // We search the users table via the service-role admin client.
+      try {
+        const admin = getSupabaseAdmin();
+        const { data: users, error } = await admin
+          .from('users')
+          .select('id, username, display_name, email')
+          .ilike('username', username)
+          .limit(1);
+        if (error) throw error;
+        if (!users || users.length === 0) return 'User not found.';
+
+        const target = users[0];
+        // Map the stored UUID back to a relay id is not deterministic, but we
+        // can use the username as the relay id for lookups since usernames are
+        // unique in the users table.
+        const result = await addGroupMember({
+          token,
+          conversationId: activeId,
+          userId: target.username,
+          displayName: target.display_name,
+          email: target.email,
+        });
+        if (!result.success) return result.error;
+        return null;
+      } catch (err) {
+        return err instanceof Error ? err.message : 'Failed to add member.';
+      }
+    },
+    [token, activeId, activeConversation],
+  );
+
+  const handleRemoveGroupMember = useCallback(
+    async (userId: string): Promise<void> => {
+      if (!token || !activeId) return;
+      const result = await removeGroupMember({
+        token,
+        conversationId: activeId,
+        userId,
+      });
+      if (!result.success) {
+        toast('Remove failed: ' + result.error, 'error');
+      }
+    },
+    [token, activeId, toast],
+  );
+
+  const handleLeaveGroup = useCallback(async () => {
+    if (!token || !activeId) return;
+    const result = await leaveGroup({
+      token,
+      conversationId: activeId,
+    });
+    if (!result.success) {
+      toast('Leave failed: ' + result.error, 'error');
+      return;
+    }
+    setShowContactPanel(false);
+    setActiveId(null);
+  }, [token, activeId, toast]);
+
+  /* -------------------------------------------------------------- */
+  /* File attachment                                                */
+  /* -------------------------------------------------------------- */
+
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1648,12 +1771,22 @@ export default function ChatPage() {
                   },
                 },
                 {
-                  label: 'Leave group',
+                  label: 'View info',
                   onClick: () => {
                     setShowMoreOptions(false);
-                    toast('Left the group', 'info');
-                    setActiveId(null);
+                    setShowContactPanel(true);
+                  },
+                },
+                {
+                  label: activeConversation?.is_group ? 'Leave group' : 'Delete chat',
+                  onClick: () => {
                     setShowMoreOptions(false);
+                    if (activeConversation?.is_group) {
+                      setShowContactPanel(true);
+                    } else {
+                      toast('Chat deleted', 'info');
+                      setActiveId(null);
+                    }
                   },
                 },
               ]}
@@ -1711,6 +1844,29 @@ export default function ChatPage() {
         isRecordingVoice={isRecordingVoice}
         fileInputRef={fileInputRef}
       />
+
+      {showContactPanel && activeConversation && (
+        <ContactPanel
+          conversation={activeConversation}
+          messages={visibleMessages}
+          meId="usr_me"
+          online={true}
+          onlineIds={new Set()}
+          typing={false}
+          favorite={activeConversation.starred}
+          pinned={false}
+          onClose={() => setShowContactPanel(false)}
+          onStartAudio={() => {}}
+          onStartVideo={() => {}}
+          onToggleAnonymity={() => {}}
+          onToggleVanish={() => {}}
+          onToggleFavorite={() => {}}
+          onTogglePin={() => {}}
+          onAddMember={handleAddGroupMember}
+          onRemoveMember={handleRemoveGroupMember}
+          onLeaveGroup={handleLeaveGroup}
+        />
+      )}
     </main>
   );
 

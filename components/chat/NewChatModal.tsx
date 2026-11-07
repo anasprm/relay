@@ -10,9 +10,10 @@ import { ArrowRight, Check, Loader2, Search, User, UserRound, Users, X } from 'l
 import { Avatar } from '@/components/ui/Avatar';
 import { Portal } from './Portal';
 import { api } from '@/lib/api';
-import { errorMessage } from '@/lib/AuthProvider';
+import { errorMessage, useAuth } from '@/lib/AuthProvider';
 import { findExistingOneOnOneChat } from '@/lib/chatHelpers';
 import { getOrCreateDirectChat } from '@/lib/actions/chatActions';
+import { createGroup } from '@/lib/actions/groups';
 import { cn } from '@/lib/utils';
 import type { Conversation, User } from '@/lib/types';
 
@@ -48,6 +49,7 @@ export function NewChatModal({
   const [busy, setBusy] = useState(false);
   const [groupName, setGroupName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const { token, user } = useAuth();
 
   // Debounced search
   useEffect(() => {
@@ -155,17 +157,38 @@ export function NewChatModal({
         onSelectConversation(result.conversationId);
         onClose();
       } else {
-        // Create group conversation (no dedup needed for groups)
-        const response = await api.post<{ conversationId: string }>(
-          '/api/conversations',
+        // Create group conversation via the service-role server action
+        const groupId = `conv_group_${Date.now()}`;
+        const allParticipants = [
+          ...selected,
           {
-            type: 'group',
-            title: groupName.trim() || 'Group chat',
-            participantIds: selected.map((m) => m.id),
+            id: currentUserId || '',
+            username: user?.username || '',
+            displayName: user?.displayName || 'You',
+            avatarUrl: user?.avatarUrl,
+            accent: user?.accent,
+            online: user?.online,
           },
-        );
-        const convId = response.conversationId;
-        onSelectConversation(convId);
+        ];
+
+        const result = await createGroup({
+          token: token || '',
+          conversationId: groupId,
+          name: groupName.trim() || 'Group chat',
+          participants: allParticipants.map((p) => ({
+            userId: p.id,
+            displayName: p.displayName,
+            email: (user as any)?.email,
+          })),
+        });
+
+        if (!result.success) {
+          setError(result.error);
+          setBusy(false);
+          return;
+        }
+
+        onSelectConversation(result.conversationId);
         onClose();
       }
     } catch (caught) {
