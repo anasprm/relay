@@ -49,6 +49,34 @@ import { useRealtimeMessages } from '@/lib/hooks/useRealtimeMessages';
 import { sendMessage } from '@/lib/actions/sendMessage';
 import type { Conversation, Message, User } from '@/lib/types';
 
+/**
+ * Writes a message into IndexedDB so it survives reloads and stays available
+ * offline. Used for both optimistic local sends and realtime arrivals.
+ */
+function cacheMessage(msg: Message): void {
+  dbPutMessage({
+    messageId: msg.id,
+    conversationId: msg.conversationId,
+    senderId: msg.senderId ?? '',
+    kind: msg.kind,
+    text: msg.text,
+    attachment: msg.attachment
+      ? {
+          url: msg.attachment.url,
+          name: msg.attachment.name,
+          size: msg.attachment.size,
+          mime: msg.attachment.mime,
+          kind: msg.attachment.kind ?? 'text',
+          width: msg.attachment.width,
+          height: msg.attachment.height,
+        }
+      : null,
+    createdAt: msg.createdAt,
+    isEncrypted: false,
+    ephemeral: msg.ephemeral,
+  }).catch((err) => console.error('[db] Failed to persist message:', err));
+}
+
 /* ------------------------------------------------------------------ */
 /* Design tokens                                                      */
 /* ------------------------------------------------------------------ */
@@ -819,29 +847,7 @@ export default function ChatPage() {
         }
         const next = [...prev, msg];
         // Persist to local IndexedDB cache for offline availability
-        dbPutMessage({
-          messageId: msg.id,
-          conversationId: msg.conversationId,
-          senderId: msg.senderId ?? '',
-          kind: msg.kind,
-          text: msg.text,
-          attachment: msg.attachment
-            ? {
-                url: msg.attachment.url,
-                name: msg.attachment.name,
-                size: msg.attachment.size,
-                mime: msg.attachment.mime,
-                kind: msg.attachment.kind ?? 'text',
-                width: msg.attachment.width,
-                height: msg.attachment.height,
-              }
-            : null,
-          createdAt: msg.createdAt,
-          isEncrypted: false,
-          ephemeral: msg.ephemeral,
-        }).catch((err) =>
-          console.error('[db] Failed to persist realtime message:', err),
-        );
+        cacheMessage(msg);
         return next;
       });
       // Update the conversation's lastMessage + unread state
@@ -1127,6 +1133,7 @@ export default function ChatPage() {
       createdAt: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, newMessage]);
+    cacheMessage(newMessage);
     setDraft('');
     setPendingAttachment(null);
     setEmojiOpen(false);
