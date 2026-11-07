@@ -62,7 +62,22 @@ export function useRealtimeMessages({
 
     const sb = getSupabase();
     const channel: RealtimeChannel = sb
-      .channel(`room:${conversationId}`)
+      .channel(`conversation:${conversationId}`, {
+        config: { broadcast: { self: false } },
+      })
+      // Messages sent through the `sendMessage` server action arrive here.
+      // Broadcast is used because Relay's custom JWT cannot satisfy the RLS
+      // policies that Postgres change events are filtered through.
+      .on('broadcast', { event: 'message' }, ({ payload }) => {
+        try {
+          const message = normalizeBroadcastMessage(payload);
+          if (message) onNewMessageRef.current(message);
+        } catch (err) {
+          onErrorRef.current?.(
+            err instanceof Error ? err : new Error('Failed to parse realtime message'),
+          );
+        }
+      })
       .on(
         'postgres_changes',
         {
@@ -84,11 +99,11 @@ export function useRealtimeMessages({
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`[Realtime] Subscribed to room:${conversationId}`);
+          console.log(`[Realtime] Subscribed to conversation:${conversationId}`);
         }
         if (status === 'CHANNEL_ERROR') {
           onErrorRef.current?.(
-            new Error(`Realtime channel error for room:${conversationId}`),
+            new Error(`Realtime channel error for conversation:${conversationId}`),
           );
         }
       });
@@ -115,6 +130,43 @@ export function useRealtimeMessages({
   }, [unsubscribe]);
 
   return { subscribe, unsubscribe, isSubscribed: !!channelRef.current };
+}
+
+/**
+ * Broadcast payloads already use the app's Message shape (they are produced by
+ * the `sendMessage` server action). Validate the essentials before handing them
+ * to the UI, and tolerate a couple of missing display-only fields.
+ */
+function normalizeBroadcastMessage(payload: any): Message | null {
+  if (!payload || typeof payload !== 'object') return null;
+  if (!payload.id || !payload.conversationId) return null;
+
+  return {
+    id: payload.id,
+    conversationId: payload.conversationId,
+    senderId: payload.senderId ?? null,
+    sender:
+      payload.sender ?? {
+        id: payload.senderId ?? '',
+        username: '',
+        displayName: '',
+        accent: 'emerald',
+        online: false,
+        lastSeen: null,
+      },
+    kind: (payload.kind || 'text') as Message['kind'],
+    text: payload.text ?? '',
+    attachment: payload.attachment ?? null,
+    anonymous: payload.anonymous ?? false,
+    ephemeral: payload.ephemeral ?? false,
+    viewOnce: payload.viewOnce ?? false,
+    viewOnceOpened: payload.viewOnceOpened ?? false,
+    reactions: payload.reactions ?? {},
+    readBy: payload.readBy ?? [],
+    starred: payload.starred ?? false,
+    createdAt: payload.createdAt ?? new Date().toISOString(),
+    ...(payload.clientId ? { clientId: payload.clientId } : {}),
+  } as Message;
 }
 
 /**

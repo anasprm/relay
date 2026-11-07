@@ -46,6 +46,7 @@ import {
 import { cn } from '@/lib/utils';
 import { dbPutConversation, dbGetAllConversations, dbPutMessage } from '@/lib/db';
 import { useRealtimeMessages } from '@/lib/hooks/useRealtimeMessages';
+import { sendMessage } from '@/lib/actions/sendMessage';
 import type { Conversation, Message, User } from '@/lib/types';
 
 /* ------------------------------------------------------------------ */
@@ -809,7 +810,13 @@ export default function ChatPage() {
     conversationId: activeId,
     onNewMessage: (msg) => {
       setMessages((prev) => {
-        if (prev.some((m) => m.id === msg.id)) return prev;
+        if (
+          prev.some(
+            (m) => m.id === msg.id || m.id === (msg as Message & { clientId?: string }).clientId,
+          )
+        ) {
+          return prev;
+        }
         const next = [...prev, msg];
         // Persist to local IndexedDB cache for offline availability
         dbPutMessage({
@@ -1135,7 +1142,28 @@ export default function ChatPage() {
           : c,
       ),
     );
-  }, [draft, pendingAttachment, activeId]);
+
+    // Persist through the service-role server action and broadcast the message
+    // to every other tab subscribed to this conversation.
+    if (token && activeId) {
+      sendMessage({
+        token,
+        conversationId: activeId,
+        body: text,
+        kind: 'text',
+        attachment: newMessage.attachment,
+        clientId: newMessage.id,
+      })
+        .then((result) => {
+          if (!result.success) {
+            console.error('[chat] Supabase sync failed:', result.error);
+          }
+        })
+        .catch((error) => {
+          console.error('[chat] Supabase sync failed:', error);
+        });
+    }
+  }, [draft, pendingAttachment, activeId, token]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
