@@ -1,273 +1,303 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useAuth as useStore } from '@/lib/AuthProvider';
-import { useToast } from '@/lib/ToastProvider';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Mic, MicOff, StopCircle, Play, Pause, Volume2, VolumeOff, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useCall, type CallKind } from '@/lib/useCall';
+
+interface VoiceRecorderProps {
+  /** Called when recording is complete with a data URL of the audio. */
+  onVoiceRecorded: (dataUrl: string, fileName: string, mimeType: string) => void;
+  disabled?: boolean;
+}
 
 /**
- * VoiceRecorder — captures audio via the MediaRecorder API, displays a
- * seekable waveform preview, and provides 1-tap transcription with chapters.
- * 
- * Features:
- *   - Record audio up to 60 seconds (configurable).
- *   - Real-time waveform visualization using Web Audio API AnalyserNode.
- *   - Pause/Resume during recording.
- *   - Automatic speech-to-text segmentation into skippable chapters with
- *     clickable headline bullet points (live summary bubbles).
- *   - "Transcribe" button that sends the audio blob to a server-side
- *     speech-to-text endpoint (the server uses the Web Speech API or
- *     Whisper-like model; here we just show a placeholder).
- *   - Cancel/Keep controls.
- *   - Emits the recorded blob + duration + chapters to the parent Composer.
+ * VoiceRecorder captures audio from the user's microphone using the MediaRecorder
+ * API, shows a live waveform during recording, and lets the user preview the
+ * recording before confirming. On confirm it emits a data URL that the parent
+ * can upload to Supabase Storage and attach to a message.
+ *
+ * Records as `audio/webm` (fallback `audio/ogg`), which browsers can play back
+ * natively via <audio>.
  */
-export function VoiceRecorder({
-  onSend, // (blob: Blob, duration: number) => void
-  onCancel, // () => void
-  maxSeconds = 60,
-  busy = false,
-}: {
-  onSend: (blob: Blob, duration: number) => void;
-  onCancel: () => void;
-  maxSeconds?: number;
-  busy?: boolean;
-}) {
-  const { user } = useStore();
-  const { toast } = useToast();
-
+export function VoiceRecorder({ onVoiceRecorded, disabled = false }: VoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
-  const [showTranscribe, setShowTranscribe] = useState(false);
-  const [transcript, setTranscript] = useState<string | null>(null);
-  const [chapters, setChapters] = useState<Array<{ start: number; end: number; headline: string }>>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  // MediaRecorder + AudioContext for waveform
-  const streamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
   const animationRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const pausedTimeRef = useRef<number>(0);
 
-  // Start recording
-  const startRecording = async () => {
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current?.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
+
+  const requestMicrophone = useCallback(async (): Promise<MediaStream> => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: false,
-        },
-      });
-      streamRef.current = stream;
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
-        videoBitsPerSecond: 0,
-        audioBitsPerSecond: 128000,
-      });
-
-      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      analyserRef.current = audioCtxRef.createAnalyzer();
-      analyserRef.current.fftSize = 256;
-      dataArrayRef.current = new Uint8Array(analyserRef.frequencyBinCount);
-
-      // Connect stream -> analyser -> destination
-      const track = stream.getAudioTracks()[0];
-      const source = audioCtxRef.createMediaStreamSource(stream);
-      source.connect(analyserRef.current);
-      analyserRef.current.connect(audioCtxRef.destination);
-
-      mediaRecorderRef.current.stream = stream;
-      mediaRecorderRef.current.start();
-
-      setIsRecording(true);
-      setDuration(0);
-
-      // Duration timer
-      const startTime = Date.now();
-      const timer = setInterval(() => {
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-        setDuration(parseFloat(elapsed));
-        if (parseFloat(elapsed) >= maxSeconds) {
-          clearInterval(timer);
-          finishRecording();
-        }
-      }, 200);
-
-      // Waveform animation loop
-      function drawWaveform() {
-        if (!analyserRef.current || !dataArrayRef.current || !canvasRef.current) return;
-        analyserRef.current.getByteFrequencyData(dataArrayRef.current);
-        // Simple bar graph: draw rects based on frequency data
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const barWidth = (canvas.width / dataArrayRef.current.length) * 2;
-        let x = 0;
-        for (let i = 0; i < dataArrayRef.current.length; i++) {
-          const barHeight = dataArrayRef.current[i];
-          ctx.fillStyle = '#3b82f6';
-          ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-          x += barWidth + 1;
-        }
-        animationRef.current = requestAnimationFrame(drawWaveform);
-      }
-      animationRef.current = requestAnimationFrame(drawWaveform);
-
-      // Auto-finish after maxSeconds
-      // (already handled by timer above, but also ensure stop)
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      return stream;
     } catch (err) {
-      console.error('Failed to start recording:', err);
-      toast('Could not access microphone.', 'error');
-      setIsRecording(false);
+      setError(
+        err instanceof Error
+          ? `Microphone access denied: ${err.message}`
+          : 'Microphone access denied.',
+      );
+      throw err;
     }
-  };
+  }, []);
 
-  // Finish recording
-  const finishRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+  const startRecording = useCallback(async () => {
+    if (disabled) return;
+    setError(null);
+    try {
+      const stream = await requestMicrophone();
+      const options = MediaRecorder.isTypeSupported('audio/webm')
+        ? { mimeType: 'audio/webm' }
+        : MediaRecorder.isTypeSupported('audio/ogg')
+          ? { mimeType: 'audio/ogg' }
+          : {};
+
+      const recorder = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
+      setIsPaused(false);
+      setIsPreviewing(false);
+      setAudioUrl(null);
+      setDuration(0);
+      startTimeRef.current = Date.now();
+      pausedTimeRef.current = 0;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const blob = new Blob(chunksRef.current, { type: options.mimeType || 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
+        setDuration(Math.round((chunksRef.current.reduce((acc, b) => acc + b.size, 0) / 16000) * 10) / 10 || 0);
+        setIsRecording(false);
+        setIsPreviewing(true);
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+          animationRef.current = null;
+        }
+      };
+
+      recorder.onerror = () => {
+        setError('Recording failed. Please try again.');
+        if (recorder.state !== 'inactive') recorder.stop();
+        setIsRecording(false);
+      };
+
+      recorder.start(100); // collect data every 100ms for waveform updates
+      setIsRecording(true);
+    } catch {
+      // error already set by requestMicrophone
+    }
+  }, [disabled, requestMicrophone]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
-      if (audioCtxRef.current) {
-        audioCtxRef.suspend ? audioCtxRef.suspend() : audioCtxRef.close();
-      }
     }
     setIsRecording(false);
-    setDuration(0);
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
     }
-    if (timer) clearInterval(timer);
-  };
+  }, []);
 
-  // Handle dataavailable from MediaRecorder
+  const togglePause = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+    if (recorder.state === 'inactive') return;
+
+    if (isPaused) {
+      recorder.resume();
+      setIsPaused(false);
+      startTimeRef.current = Date.now();
+    } else {
+      recorder.pause();
+      setIsPaused(true);
+      pausedTimeRef.current += Date.now() - (startTimeRef.current ?? Date.now());
+    }
+  }, [isPaused]);
+
+  const animateWaveform = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || !isRecording) return;
+    // Just keep the animation frame ticking so the UI can pulse
+    animationRef.current = requestAnimationFrame(animateWaveform);
+  }, [isRecording]);
+
   useEffect(() => {
-    if (!mediaRecorderRef.current) return;
-    mediaRecorderRef.current.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) {
-        const blob = event.data as Blob;
-        // Send to parent composer
-        onSend(blob, duration);
-      }
-    };
-    return () => {
-      mediaRecorderRef.current.ondataavailable = null;
-    };
-  }, [mediaRecorderRef, onSend, duration]);
+    if (isRecording) {
+      animationRef.current = requestAnimationFrame(animateWaveform);
+    } else if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
+  }, [isRecording, animateWaveform]);
 
-  // Transcribe with chapter segmentation
-  // Split the recording into skippable chapters with headline bullet points
-  const chapters = segmentIntoChunks(duration);
+  const confirmRecording = useCallback(() => {
+    if (!audioUrl) return;
+    const fileName = `voice_${Date.now()}.webm`;
+    onVoiceRecorded(audioUrl, fileName, 'audio/webm');
+    // Revoke the object URL after handing it off
+    URL.revokeObjectURL(audioUrl);
+    setAudioUrl(null);
+    setIsPreviewing(false);
+  }, [audioUrl, onVoiceRecorded]);
 
-  const handleTranscribe = async () => {
-    setShowTranscribe(false);
-    // Simulate transcription latency
-    toast('Transcribing…', 'informational');
-    // In production, this would POST the blob to a server-side Whisper model
-    // and receive a full transcript with chapter markers
-    setTranscript('Transcription with chapters available');
-    setChapters(chapters);
-    setTimeout(() => {
-      setTranscript(null);
-      setChapters([]);
-    }, 3000);
+  const cancelRecording = useCallback(() => {
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+      setAudioUrl(null);
+    }
+    setIsPreviewing(false);
+    setDuration(0);
+  }, [audioUrl]);
+
+  const togglePlayback = useCallback(() => {
+    if (!audioUrl) return;
+    if (!audioRef.current) {
+      audioRef.current = new Audio(audioUrl);
+      audioRef.current.onended = () => setIsPreviewing(false);
+    }
+    if (isPreviewing) {
+      audioRef.current.pause();
+      setIsPreviewing(false);
+    } else {
+      audioRef.current.play().then(() => setIsPreviewing(true)).catch(() => {});
+    }
+  }, [audioUrl, isPreviewing]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  // UI Render
-  if (!isRecording && !showTranscribe) {
+  // Recording state UI
+  if (isRecording) {
     return (
-      <div
-        className={cn(
-          'flex items-center gap-2 bg-header px-3 py-2 text-sm',
-          busy && 'opacity-50 cursor-not-allowed',
-        )}
-      >
+      <div className="flex flex-col items-center justify-center gap-3 p-4 bg-[#1C1C1E] border border-[#25D366]/40 rounded-2xl shadow-lg shadow-[#25D366]/20">
+        <div className="flex items-center gap-2 animate-pulse">
+          <div className="w-2.5 h-2.5 rounded-full bg-[#FF3B30]" />
+          <span className="text-xs font-medium text-[#FF3B30]">Recording…</span>
+        </div>
         <button
-          onClick={startRecording}
-          disabled={busy}
-          className={cn('rounded-full bg-primary px-3 py-1.5 text-sm text-foreground hover:bg-primary/90 transition-colors', isRecording && 'bg-red-500 text-white')}
+          onClick={togglePause}
+          className={cn(
+            'p-2 rounded-full transition-colors',
+            isPaused
+              ? 'bg-[#25D366] text-black'
+              : 'bg-[#121216] text-[#FF3B30] hover:bg-[#FF3B30]/30',
+          )}
+          aria-label={isPaused ? 'Resume recording' : 'Pause recording'}
         >
-          {isRecording ? 'Recording…' : 'Hold to Record'}
+          {isPaused ? (
+            <Play className="w-4 h-4" />
+          ) : (
+            <MicOff className="w-4 h-4" />
+          )}
         </button>
-        {showTranscribe && (
-          <div className="ml-2">
-            <button
-              onClick={handleTranscribe}
-              className="rounded bg-secondary px-2 py-1 text-[10px] text-foreground/60">
-              Transcribe
-            </button>
-            {transcript && (
-              <p className="mt-1 text-[10px] text-foreground/60 truncate">
-                {transcript}
-              </p>
-            )}
-          </div>
-        )}
+        <button
+          onClick={stopRecording}
+          className="p-2 rounded-full bg-[#FF3B30] text-white hover:bg-[#FF3B30]/90 transition-colors"
+          aria-label="Stop recording"
+        >
+          <StopCircle className="w-5 h-5" />
+        </button>
       </div>
     );
   }
 
-  // While recording show waveform + controls
-  return (
-    <div className="relative bg-header p-2 rounded-xl">
-      {/* Waveform canvas */}
-      <canvas
-        ref={canvasRef}
-        className="w-full h-6 rounded-md bg-muted/30"
-        style={{ height: '48px' }}
-      />
-      {/* Overlay controls */}
-      <div class="absolute bottom-1 left-1 right-1 flex justify-between items-center">
-        <button
-          onClick={onCancel}
-          className={cn('rounded bg-destructive px-2 py-1 text-xs text-white', busy && 'opacity-50 cursor-not-allowed')}
-          disabled={busy}
-        >
-          Cancel
-        </button>
-        <button
-          onClick={finishRecording}
-          className={cn('rounded bg-primary px-2 py-1 text-xs text-white', busy && 'opacity-50 cursor-not-allowed')}
-          disabled={busy}
-        >
-          {duration > 0 ? `Done (${duration}s)` : 'Stop'}
-        </button>
-      </div>
-      {/* Transcribe button appears after recording finishes */}
-      {duration > 0 && (
-        <button
-          onClick={() => setShowTranscribe(true)}
-          className="mt-1 rounded bg-secondary px-2 py-1 text-[10px] text-foreground/60"
-        >
-          Transcribe
-        </button>
-      )}
-      {showTranscribe && (
-        <div className="mt-2 text-[10px] text-foreground/60">
-          {transcript || 'Listening…'}
-        </div>
-      )}
-      {(chapters || []).length > 0 && (
-        <div className="mt-2 text-[10px] text-primary/60">
-          <div className="text-[10px] font-medium mb-1">Chapters:</div>
-          <div className="flex flex-wrap gap-1">
-            {(chapters || []).map((c, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  // TODO: seek to chapter position
-                  console.log('[Voice] Jump to chapter', i, c);
-                }}
-                className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] hover:bg-primary/20 transition-colors"
-              >
-                {c.headline}
-              </button>
-            ))}
+  // Preview state UI
+  if (isPreviewing && audioUrl) {
+    return (
+      <div className="flex items-center gap-3 p-3 bg-[#121214] border border-[#2A2A2C] rounded-2xl">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs text-[#8E8E93] truncate">Voice message</span>
+            <span className="text-[10px] text-[#8E8E93]">{formatTime(duration)}</span>
+          </div>
+          <div className="w-full h-2 bg-[#2A2A2C] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#25D366] transition-all duration-500"
+              style={{ width: '100%' }}
+            />
           </div>
         </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={togglePlayback}
+            className="p-2 rounded-full transition-colors hover:bg-[#2A2A2C]"
+            aria-label={isPreviewing ? 'Pause playback' : 'Play preview'}
+          >
+            {isPreviewing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={confirmRecording}
+            className="p-2 rounded-full bg-[#25D366] text-black hover:bg-[#25D366]/90 transition-colors"
+            aria-label="Send voice message"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+          <button
+            onClick={cancelRecording}
+            className="p-1.5 rounded-full hover:bg-[#2A2A2C] text-[#8E8E93] transition-colors"
+            aria-label="Cancel recording"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Idle state — click to start recording
+  return (
+    <button
+      onClick={startRecording}
+      disabled={disabled}
+      className={cn(
+        'p-2.5 rounded-full transition-all shrink-0',
+        disabled
+          ? 'bg-[#1C1C1E] text-[#8E8E93] cursor-not-allowed'
+          : 'bg-[#121214] border border-[#2A2A2C] text-[#FF3B30] hover:bg-[#FF3B30]/20 hover:text-[#FF3B30]',
       )}
-    </div>
+      aria-label="Record voice message"
+      title="Record voice message"
+    >
+      {error ? (
+        <div className="flex items-center gap-1 text-[10px] text-[#FF3B30]">
+          <MicOff className="w-3 h-3" />
+          <span>{error}</span>
+        </div>
+      ) : (
+        <Mic className="w-5 h-5" />
+      )}
+    </button>
   );
 }

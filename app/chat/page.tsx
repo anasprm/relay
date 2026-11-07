@@ -841,6 +841,7 @@ export default function ChatPage() {
     mimeType: string;
     size: number;
   } | null>(null);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [chatSearchOpen, setChatSearchOpen] = useState(false);
   const moreOptionsRef = useRef<HTMLButtonElement>(null);
@@ -1127,6 +1128,7 @@ export default function ChatPage() {
   }, [newChatInput, conversations]);
 
   const handleSend = useCallback(async () => {
+    if (isRecordingVoice) return;
     const text = draft.trim();
     if (!text && !pendingAttachment) return;
 
@@ -1308,6 +1310,83 @@ export default function ChatPage() {
     }
   }, [draft, pendingAttachment, activeId, token, toast]);
 
+  const handleVoiceRecorded = useCallback(
+    async (dataUrl: string, fileName: string, mimeType: string) => {
+      if (!token || !activeId) return;
+
+      setIsRecordingVoice(false);
+
+      // Upload the recorded audio to Supabase Storage
+      const uploadResult = await uploadAttachment({
+        token,
+        conversationId: activeId,
+        dataUrl,
+        fileName,
+        mimeType,
+      });
+      if (!uploadResult.success) {
+        toast('Voice upload failed: ' + uploadResult.error, 'error');
+        return;
+      }
+
+      const attachment = uploadResult.attachment;
+
+      // Optimistic message
+      const newMessage: Message = {
+        id: `msg_${Date.now()}`,
+        conversationId: activeId,
+        senderId: 'usr_me',
+        sender: MOCK_USER,
+        kind: 'audio',
+        text: '',
+        attachment,
+        anonymous: false,
+        ephemeral: false,
+        viewOnce: false,
+        viewOnceOpened: false,
+        reactions: {},
+        readBy: ['usr_me'],
+        starred: false,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, newMessage]);
+      cacheMessage(newMessage);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === activeId
+            ? {
+                ...c,
+                lastMessage: newMessage,
+                unreadCount: 0,
+                updatedAt: new Date().toISOString(),
+              }
+            : c,
+        ),
+      );
+
+      // Persist through the service-role server action and broadcast.
+      if (token && activeId) {
+        sendMessage({
+          token,
+          conversationId: activeId,
+          body: '',
+          kind: 'audio',
+          attachment,
+          clientId: newMessage.id,
+        })
+          .then((result) => {
+            if (!result.success) {
+              console.error('[chat] Voice message sync failed:', result.error);
+            }
+          })
+          .catch((error) => {
+            console.error('[chat] Voice message sync failed:', error);
+          });
+      }
+    },
+    [token, activeId, toast],
+  );
+
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1476,6 +1555,8 @@ export default function ChatPage() {
             onSend={handleSend}
             emojiOpen={emojiOpen}
             onFileChange={handleFileChange}
+            onVoiceRecorded={handleVoiceRecorded}
+            isRecordingVoice={isRecordingVoice}
             fileInputRef={fileInputRef}
           />
         </div>
@@ -1626,6 +1707,8 @@ export default function ChatPage() {
         onSend={handleSend}
         emojiOpen={emojiOpen}
         onFileChange={handleFileChange}
+        onVoiceRecorded={handleVoiceRecorded}
+        isRecordingVoice={isRecordingVoice}
         fileInputRef={fileInputRef}
       />
     </main>

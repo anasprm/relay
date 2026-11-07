@@ -10,8 +10,10 @@ import {
   FileText,
   Camera,
   Headphones,
+  Mic as MicIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { VoiceRecorder } from './VoiceRecorder';
 
 interface ChatComposerProps {
   draft: string;
@@ -21,6 +23,10 @@ interface ChatComposerProps {
   emojiOpen: boolean;
   disabled?: boolean;
   onFileChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  /** Called when a voice recording is complete with a data URL. */
+  onVoiceRecorded?: (dataUrl: string, fileName: string, mimeType: string) => void;
+  /** Whether a voice recording is currently in progress. */
+  isRecordingVoice?: boolean;
 }
 
 export function ChatComposer({
@@ -31,6 +37,8 @@ export function ChatComposer({
   emojiOpen,
   disabled = false,
   onFileChange,
+  onVoiceRecorded,
+  isRecordingVoice,
 }: ChatComposerProps) {
   const [isAttachOpen, setIsAttachOpen] = useState(false);
   const attachMenuRef = useRef<HTMLDivElement>(null);
@@ -153,22 +161,35 @@ export function ChatComposer({
 
       {/* Central Input Container Pill */}
       <div className="flex-1 flex items-center bg-[#121214] rounded-full px-4 py-2 border border-zinc-800/80 focus-within:border-[#25D366] transition-all shadow-inner">
-        <textarea
-          ref={textareaRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={disabled}
-          placeholder="Message…"
-          rows={1}
-          className="w-full max-h-[120px] resize-none overflow-y-auto bg-transparent text-white placeholder-zinc-500 focus:outline-none text-sm py-1"
-        />
+        {/* Voice recording in progress */}
+        {isRecordingVoice ? (
+          <VoiceRecorder
+            onVoiceRecorded={onVoiceRecorded}
+            disabled={disabled}
+          />
+        ) : (
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={disabled}
+            placeholder="Message…"
+            rows={1}
+            className="w-full max-h-[120px] resize-none overflow-y-auto bg-transparent text-white placeholder-zinc-500 focus:outline-none text-sm py-1"
+          />
+        )}
         {/* Emoji Picker Trigger */}
         <div className="relative ml-2 shrink-0">
           <button
             type="button"
             onClick={onToggleEmoji}
-            className="ml-2 shrink-0 text-zinc-400 hover:text-white transition-colors p-1"
+            className={cn(
+              'ml-2 shrink-0 p-1 transition-colors',
+              disabled
+                ? 'text-[#8E8E93] cursor-not-allowed'
+                : 'text-zinc-400 hover:text-white',
+            )}
             title="Choose an emoji"
             disabled={disabled}
           >
@@ -181,19 +202,21 @@ export function ChatComposer({
       </div>
 
       {/* Right Send / Mic Action Button */}
-      <button
-        type="submit"
-        disabled={isEmpty || disabled}
-        className={cn(
-          "p-2.5 rounded-full text-white font-medium transition-all shrink-0 flex items-center justify-center shadow-md",
-          isEmpty || disabled
-            ? "bg-[#1C1C1E] text-[#8E8E93]"
-            : "bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600",
-        )}
-        aria-label={isEmpty ? "Record voice message" : "Send message"}
-      >
-        {isEmpty ? <Mic className="w-5 h-5 text-black" /> : <Send className="w-5 h-5 text-black" />}
-      </button>
+      {!isRecordingVoice && (
+        <button
+          type="submit"
+          disabled={isEmpty || disabled}
+          className={cn(
+            "p-2.5 rounded-full text-white font-medium transition-all shrink-0 flex items-center justify-center shadow-md",
+            isEmpty || disabled
+              ? "bg-[#1C1C1E] text-[#8E8E93]"
+              : "bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600",
+          )}
+          aria-label={isEmpty ? "Record voice message" : "Send message"}
+        >
+          {isEmpty ? <MicIcon className="w-5 h-5 text-black" /> : <Send className="w-5 h-5 text-black" />}
+        </button>
+      )}
     </form>
   );
 }
