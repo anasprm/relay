@@ -6,10 +6,13 @@
  * lib/AuthProvider.tsx) owns the session. This client only talks to
  * your Supabase database and Realtime channels.
  *
+ * Client creation is lazy (on first use) so Next.js static prerendering
+ * doesn't fail when env vars are placeholders during build.
+ *
  * Usage:
- *   import { supabase } from '@/lib/supabase/browser';
+ *   import { getSupabase } from '@/lib/supabase/browser';
+ *   const supabase = getSupabase();
  *   const { data, error } = await supabase.from('messages').select('*');
- *   const channel = supabase.channel('room:conv_abc').subscribe();
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -17,17 +20,22 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables',
-  );
+let _client: ReturnType<typeof createClient> | null = null;
+
+export function getSupabase() {
+  if (_client) return _client;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables',
+    );
+  }
+  _client = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+  return _client;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
-
-export type SupabaseClient = typeof supabase;
+export type SupabaseClient = ReturnType<typeof createClient>;

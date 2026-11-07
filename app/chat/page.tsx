@@ -44,7 +44,8 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { dbPutConversation, dbGetAllConversations } from '@/lib/db';
+import { dbPutConversation, dbGetAllConversations, dbPutMessage } from '@/lib/db';
+import { useRealtimeMessages } from '@/lib/hooks/useRealtimeMessages';
 import type { Conversation, Message, User } from '@/lib/types';
 
 /* ------------------------------------------------------------------ */
@@ -801,6 +802,61 @@ export default function ChatPage() {
       return bTime - aTime;
     });
   }, [conversations, searchQuery, filter]);
+
+  /* -------------------------------------------------------------- */
+  /* Supabase Realtime — instant message sync                       */
+  /* -------------------------------------------------------------- */
+  useRealtimeMessages({
+    conversationId: activeId,
+    onNewMessage: (msg) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        const next = [...prev, msg];
+        // Persist to local IndexedDB cache for offline availability
+        dbPutMessage({
+          messageId: msg.id,
+          conversationId: msg.conversationId,
+          senderId: msg.senderId ?? '',
+          kind: msg.kind,
+          text: msg.text,
+          attachment: msg.attachment
+            ? {
+                url: msg.attachment.url,
+                name: msg.attachment.name,
+                size: msg.attachment.size,
+                mime: msg.attachment.mime,
+                kind: msg.attachment.kind ?? 'text',
+                width: msg.attachment.width,
+                height: msg.attachment.height,
+              }
+            : null,
+          createdAt: msg.createdAt,
+          isEncrypted: false,
+          ephemeral: msg.ephemeral,
+        }).catch((err) =>
+          console.error('[db] Failed to persist realtime message:', err),
+        );
+        return next;
+      });
+      // Update the conversation's lastMessage + unread state
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === msg.conversationId
+            ? {
+                ...c,
+                lastMessage: msg,
+                updatedAt: msg.createdAt,
+                unreadCount:
+                  msg.senderId !== user?.id ? c.unreadCount + 1 : c.unreadCount,
+              }
+            : c,
+        ),
+      );
+    },
+    onError: (err) => {
+      console.warn('[Realtime] Subscription error:', err.message);
+    },
+  });
 
   /* -------------------------------------------------------------- */
   /* Navigation helpers                                             */

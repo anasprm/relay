@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase/browser';
+import { getSupabase } from '@/lib/supabase/browser';
 import type { Message } from '@/lib/types';
 
 interface UseRealtimeMessagesParams {
@@ -47,7 +47,8 @@ export function useRealtimeMessages({
     if (!conversationId) return;
     if (channelRef.current) return; // already subscribed
 
-    const channel: RealtimeChannel = supabase
+    const sb = getSupabase();
+    const channel: RealtimeChannel = sb
       .channel(`room:${conversationId}`)
       .on(
         'postgres_changes',
@@ -84,7 +85,7 @@ export function useRealtimeMessages({
 
   const unsubscribe = useCallback(() => {
     if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
+      getSupabase().removeChannel(channelRef.current);
       channelRef.current = null;
     }
   }, []);
