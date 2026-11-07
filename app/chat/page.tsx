@@ -19,6 +19,7 @@ import { CopilotPanel } from '@/components/chat/CopilotPanel';
 import { ChatComposer } from '@/components/chat/ChatComposer';
 import { ContactPanel } from '@/components/chat/ContactPanel';
 import { SearchModal } from '@/components/chat/SearchModal';
+import { MediaVaultDrawer } from '@/components/chat/MediaVaultDrawer';
 import {
   ArrowRight,
   CheckCheck,
@@ -907,6 +908,7 @@ export default function ChatPage() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showContactPanel, setShowContactPanel] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mediaVaultOpen, setMediaVaultOpen] = useState(false);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [isCalling, setIsCalling] = useState(false);
   const [callType, setCallType] = useState<'audio' | 'video'>('audio');
@@ -1979,6 +1981,13 @@ export default function ChatPage() {
           >
             <Search size={18} className="h-4 w-4" />
           </button>
+          <button
+            onClick={() => setMediaVaultOpen(true)}
+            className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]"
+            aria-label="Shared media vault"
+          >
+            <ImageIcon size={18} className="h-4 w-4" />
+          </button>
           {showProfileMenu && (
             <BulletproofDropdown
               open={showProfileMenu}
@@ -2204,6 +2213,18 @@ export default function ChatPage() {
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         onSelect={handleSearchSelect}
+      />
+    )}
+    {mediaVaultOpen && (
+      <MediaVaultDrawer
+        open={mediaVaultOpen}
+        onClose={() => setMediaVaultOpen(false)}
+        conversationId={activeId || ''}
+        onSelect={(messageId) => {
+          setMediaVaultOpen(false);
+          setHighlightedMessageId(messageId);
+          scrollToMessage(messageId);
+        }}
       />
     )}
     </div>
