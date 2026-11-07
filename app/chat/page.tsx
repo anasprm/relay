@@ -13,7 +13,8 @@ import { useToast } from '@/lib/ToastProvider';
 import { Logo } from '@/components/ui/Logo';
 import { Avatar } from '@/components/ui/Avatar';
 import { Portal } from '@/components/chat/Portal';
-import { MoreOptionsMenu } from '@/components/chat/MoreOptionsMenu';
+import { SidebarNavigationContainer } from '@/components/chat/SidebarNavigationContainer';
+import { BulletproofDropdown } from '@/components/chat/BulletproofDropdown';
 import { CopilotPanel } from '@/components/chat/CopilotPanel';
 import { ChatComposer } from '@/components/chat/ChatComposer';
 import {
@@ -22,6 +23,7 @@ import {
   Image as ImageIcon,
   LogOut,
   Mic,
+  MicOff,
   MessageCircle,
   MessageSquarePlus,
   MoreVertical,
@@ -695,7 +697,7 @@ export function EmojiTray({ open, onClose, onSelect }: EmojiTrayProps) {
 /* Chat page                                                          */
 /* ------------------------------------------------------------------ */
 
-type MobileView = 'LIST' | 'CHAT' | 'COPILOT' | 'STATUS' | 'COMMUNITIES' | 'CALLS';
+type MobileView = 'LIST' | 'CHAT' | 'COPILOT';
 
 export default function ChatPage() {
   const router = useRouter();
@@ -1111,159 +1113,8 @@ export default function ChatPage() {
   }, []);
 
   /* -------------------------------------------------------------- */
-  /* Mobile views                                                   */
+  /* Mobile chat view                                               */
   /* -------------------------------------------------------------- */
-  const mobileList = (
-    <div className="flex h-full flex-col pointer-events-auto">
-      <header className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-4 z-20">
-        <div className="flex items-center gap-2">
-          <Logo className="h-8 w-8 text-[#25D366]" compact />
-          <span className="font-medium text-sm text-[#FFFFFF] tracking-tight">Relay</span>
-        </div>
-        <div className="flex items-center gap-2 pointer-events-auto">
-          <Search className="h-5 w-5 text-[#8E8E93]" />
-          <button className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] pointer-events-auto" aria-label="Camera">
-            <Play className="h-5 w-5" />
-          </button>
-          <button
-            ref={moreOptionsRef}
-            onClick={(e) => { e.stopPropagation(); setShowMoreOptions((p) => !p); }}
-            className="relative inline-block p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97] pointer-events-auto" aria-label="More options"
-          >
-            <MoreVertical className="h-5 w-5" />
-          </button>
-          {showMoreOptions && (
-            <MoreOptionsMenu
-              open={true}
-              onClose={() => setShowMoreOptions(false)}
-              anchorRef={moreOptionsRef}
-              onClearChat={handleClearChat}
-              onMute={() => toast('Notifications muted', 'info')}
-              onLeaveGroup={() => {
-                toast('Left the group', 'info');
-                setActiveId(null);
-                setShowMoreOptions(false);
-              }}
-            />
-          )}
-        </div>
-      </header>
-      {isNewChatInputOpen && (
-        <div className="p-3 space-y-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8E8E93]" />
-            <input
-              type="text"
-              value={newChatInput}
-              onChange={(e) => setNewChatInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleNewChatSubmit();
-                if (e.key === 'Escape') setIsNewChatInputOpen(false);
-              }}
-              placeholder="Enter username or email…"
-              className="w-full pl-10 pr-10 py-2 bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl text-sm text-[#FFFFFF] placeholder-[#8E8E93] focus:outline-none focus:border-[#25D366] transition-all"
-              autoFocus
-            />
-            <button
-              onClick={() => setIsNewChatInputOpen(false)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#2A2A2C] text-[#8E8E93] hover:text-[#FFFFFF] transition-colors"
-              aria-label="Close new chat input"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <p className="text-xs text-[#8E8E93]">
-            Type a username or email to start a new conversation
-          </p>
-        </div>
-      )}
-      <div className="relative flex-1 overflow-y-auto px-2 space-y-1 relay-will-change-scroll relay-anti-smear">
-        {filteredConversations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center text-[#8E8E93]">
-            <MessageSquarePlus className="h-10 w-10 mb-2 opacity-30" />
-            <p className="text-sm">No conversations yet</p>
-            <button onClick={handleNewChat} className="mt-3 text-xs text-[#25D366] underline hover:text-[#1E9E52]">
-              Start a new chat
-            </button>
-          </div>
-        ) : (
-          filteredConversations.map((conv) => (
-            <ConversationRowLite
-              key={conv.id}
-              conversation={conv}
-              active={conv.id === activeId}
-              online={!!(conv.other?.online)}
-              onSelect={() => handleSelectConversation(conv)}
-            />
-          ))
-        )}
-        {activeId == null && (
-          <button
-            onClick={handleNewChat}
-            className="fixed bottom-10 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-[#FFFFFF] shadow-[0_8px_24px_rgba(37,211,102,0.35)] hover:bg-[#1E9E52] transition-all active:scale-[0.97]"
-            aria-label="New conversation"
-          >
-            <MessageSquarePlus className="h-6 w-6" />
-          </button>
-        )}
-      </div>
-      <div className="h-16 border-t border-[#2A2A2C] bg-[#0A0A0C] px-3 flex items-center justify-around z-20 relay-pb-safe pointer-events-auto">
-        <button
-          onClick={() => setMobileView('LIST')}
-          className={cn(
-            'flex flex-col items-center gap-1 pointer-events-auto',
-            mobileView === 'LIST'
-              ? 'text-[#25D366]'
-              : 'text-[#8E8E93] hover:text-[#FFFFFF] transition-colors',
-          )}
-          aria-label="Chats"
-        >
-          <MessageCircle className="h-5 w-5" />
-          <span className="text-[10px]">Chats</span>
-        </button>
-        <button
-          onClick={() => setMobileView('STATUS')}
-          className={cn(
-            'flex flex-col items-center gap-1 pointer-events-auto',
-            mobileView === 'STATUS'
-              ? 'text-[#25D366]'
-              : 'text-[#8E8E93] hover:text-[#FFFFFF] transition-colors',
-          )}
-          aria-label="Status"
-        >
-          <Play className="h-5 w-5" />
-          <span className="text-[10px]">Status</span>
-        </button>
-        <button
-          onClick={() => setMobileView('COMMUNITIES')}
-          className={cn(
-            'flex flex-col items-center gap-1 pointer-events-auto',
-            mobileView === 'COMMUNITIES'
-              ? 'text-[#25D366]'
-              : 'text-[#8E8E93] hover:text-[#FFFFFF] transition-colors',
-          )}
-          aria-label="Communities"
-        >
-          <Users className="h-5 w-5" />
-          <span className="text-[10px]">Communities</span>
-        </button>
-        <button
-          onClick={() => setMobileView('CALLS')}
-          className={cn(
-            'flex flex-col items-center gap-1 pointer-events-auto',
-            mobileView === 'CALLS'
-              ? 'text-[#25D366]'
-              : 'text-[#8E8E93] hover:text-[#FFFFFF] transition-colors',
-          )}
-          aria-label="Calls"
-        >
-          <Phone className="h-5 w-5" />
-          <span className="text-[10px]">Calls</span>
-        </button>
-      </div>
-    </div>
-  );
-
   const mobileChat = (
     <div className="flex h-full flex-col pointer-events-auto">
       {/* Sticky header — Phase 2 */}
@@ -1319,19 +1170,18 @@ export default function ChatPage() {
                 messages[i - 1]?.senderId !== msg.senderId ||
                 new Date(msg.createdAt).getTime() -
                   new Date(messages[i - 1]?.createdAt ?? 0).getTime() >
-                  5 * 60 * 1000
+                5 * 60 * 1000
               }
               onReaction={handleReaction}
-                searchQuery={chatSearchQuery}
-              />
-            ))
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center text-[#8E8E93] pt-20">
-              <p className="text-sm mb-2">No messages yet</p>
-              <p className="text-xs">Start the conversation by sending a message below.</p>
-            </div>
-          )}
-        </div>
+            />
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center text-[#8E8E93] pt-20">
+            <p className="text-sm mb-2">No messages yet</p>
+            <p className="text-xs">Start the conversation by sending a message below.</p>
+          </div>
+        )}
+      </div>
       {activeId && (
         <div className="relay-pb-safe">
           <ChatComposer
@@ -1352,191 +1202,18 @@ export default function ChatPage() {
   );
 
   /* -------------------------------------------------------------- */
-  /* Desktop layout                                                 */
+  /* Desktop main content pane                                      */
   /* -------------------------------------------------------------- */
-  const desktopSidebar = (
-    <aside className="relative hidden md:flex h-[100dvh] flex-col shrink-0 w-[340px] bg-[#0F0F11] border-r border-[#2A2A2C]">
-      <div className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-4">
+  const desktopMain = (
+    <main className="flex-1 flex flex-col min-h-0 bg-[#0A0A0C]">
+      <header className="flex h-16 shrink-0 items-center justify-between bg-[#0A0A0C] border-b border-[#2A2A2C] px-4">
         <div className="flex items-center gap-2">
           <Logo className="h-8 w-8 text-[#25D366]" compact />
           <span className="font-medium text-sm text-[#FFFFFF] tracking-tight">Relay</span>
         </div>
-        <button
-          onClick={handleNewChat}
-          className="relative group flex h-8 w-8 items-center justify-center rounded-full bg-[#2A2A2C] border border-[#2A2A2C] hover:bg-[#3A3A3C] hover:text-[#25D366] transition-all text-[#25D366]" aria-label="New conversation"
-        >
-          <MessageSquarePlus className="h-5 w-5" />
-          <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] group-hover:bg-[#1E9E52] border-2 border-black" />
-        </button>
-      </div>
-      {isNewChatInputOpen && (
-        <div className="p-3 space-y-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8E8E93]" />
-            <input
-              type="text"
-              value={newChatInput}
-              onChange={(e) => setNewChatInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleNewChatSubmit();
-                if (e.key === 'Escape') setIsNewChatInputOpen(false);
-              }}
-              placeholder="Enter username or email…"
-              className="w-full pl-10 pr-10 py-2 bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl text-sm text-[#FFFFFF] placeholder-[#8E8E93] focus:outline-none focus:border-[#25D366] transition-all"
-              autoFocus
-            />
-            <button
-              onClick={() => setIsNewChatInputOpen(false)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#2A2A2C] text-[#8E8E93] hover:text-[#FFFFFF] transition-colors"
-              aria-label="Close new chat input"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <p className="text-xs text-[#8E8E93]">
-            Type a username or email to start a new conversation
-          </p>
-        </div>
-      )}
-      <div className="p-3 space-y-2">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8E8E93]" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search conversations…"
-            className="w-full pl-10 pr-4 py-2 bg-[#1C1C1E] border border-[#2A2A2C] rounded-xl text-sm text-[#FFFFFF] placeholder-[#8E8E93] focus:outline-none focus:border-[#25D366] transition-all"
-          />
-        </div>
-        <div className="flex gap-1">
-          {['all', 'unread', 'favorites', 'groups'].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f as typeof filter)}
-              className={cn(
-                'flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors',
-                filter === f
-                  ? 'bg-[#25D366] border border-[#25D366] text-[#FFFFFF]'
-                  : 'bg-transparent text-[#8E8E93] hover:text-[#FFFFFF] hover:bg-[#2A2A2C]',
-              )}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto p-2 space-y-1 relay-will-change-scroll relay-anti-smear">
-        {filteredConversations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center text-[#8E8E93]">
-            <MessageSquarePlus className="h-10 w-10 mb-2 opacity-30" />
-            <p className="text-sm">No conversations yet</p>
-            <button onClick={handleNewChat} className="mt-3 text-xs text-[#25D366] underline hover:text-[#1E9E52]">
-              Start a new chat
-            </button>
-          </div>
-        ) : (
-          filteredConversations.map((conv) => (
-            <ConversationRowLite
-              key={conv.id}
-              conversation={conv}
-              active={conv.id === activeId}
-              online={!!(conv.other?.online)}
-              onSelect={() => handleSelectConversation(conv)}
-            />
-          ))
-        )}
-      </div>
-      <div className="flex items-center justify-between p-3 bg-[#0A0A0C] border-t border-[#1C1C1E]">
-        {user ? (
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 shrink-0 flex items-center justify-center">
-              <Avatar user={user} size="xs" className="w-9 h-9" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm text-[#FFFFFF] truncate">
-                {user.displayName}
-              </h3>
-              <p className="text-xs text-[#8E8E93] truncate">{user.username}</p>
-            </div>
-            <MoreVertical
-              ref={profileMenuRef}
-              className="h-4 w-4 text-[#8E8E93]"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowProfileMenu((p) => !p);
-              }}
-            />
-          </div>
-        ) : null}
-        {showProfileMenu && (
-          <MoreOptionsMenu
-            open={true}
-            onClose={() => setShowProfileMenu(false)}
-            anchorRef={profileMenuRef}
-            menuItems={[
-              {
-                label: 'Profile',
-                icon: <User className="h-4 w-4" />,
-                onClick: () => {
-                  toast('Profile settings', 'info');
-                },
-              },
-              {
-                label: 'Settings',
-                icon: <Settings className="h-4 w-4" />,
-                onClick: () => {
-                  toast('Opening settings', 'info');
-                },
-              },
-            ]}
-            dangerLabel="Sign out"
-            dangerAction={() => {
-              toast('Signed out', 'info');
-            }}
-          />
-        )}
-      </div>
-    </aside>
-  );
-
-  const desktopMain = (
-    <main className="flex-1 flex flex-col min-w-0 bg-[#0A0A0C]">
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 bg-[#0A0A0C] border-b border-[#2A2A2C] px-3 lg:px-5">
-        <div className="flex min-w-0 items-center gap-3">
-          {activeConversation ? (
-            <>
-              <div className="relative h-10 w-10 shrink-0">
-                <img
-                  src={activeConversation.other?.avatarUrl || 'https://ui-avatars.com/api/?name=Group&background=25D366&color=fff'}
-                  alt={activeConversation.title || 'Conversation'}
-                  className="h-full w-full rounded-full object-cover border border-[#2A2A2C]"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <span className="absolute -bottom-1 -right-1 h-2 w-2 rounded-full bg-[#25D366] border-2 border-black" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="font-medium text-sm text-[#FFFFFF] truncate">{activeConversation.title || 'Conversation'}</h2>
-                <p className="text-xs text-[#8E8E93] truncate">{activeConversation.participantCount} members · Active</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="h-10 w-10 rounded-full bg-[#1C1C1E] flex items-center justify-center text-[#8E8E93]">
-                <UserRound className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="font-medium text-sm text-[#FFFFFF]">Select a conversation</h2>
-                <p className="text-xs text-[#8E8E93]">Pick a thread from the sidebar or create a new one.</p>
-              </div>
-            </>
-          )}
-        </div>
         <div className="flex shrink-0 items-center gap-0.5 lg:gap-2">
           <button
             onClick={toggleCopilot}
-            className="hidden xl:inline-flex p-2 rounded-lg transition-all active:scale-[0.97]"
             className={cn(
               'p-2 rounded-lg transition-all active:scale-[0.97]',
               copilotOpen
@@ -1555,36 +1232,68 @@ export default function ChatPage() {
                 onClick={(e) => { e.stopPropagation(); setShowMoreOptions((p) => !p); }}
                 className="relative inline-block p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]" aria-label="More options"
               >
-                <MoreVertical className="h-5 w-5" />
-              </button>
-              <button onClick={() => handleStartCall('audio')} className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]" aria-label="Start audio call">
-                <Phone className="h-5 w-5" />
-              </button>
-              <button onClick={() => handleStartCall('video')} className="p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]" aria-label="Start video call">
-                <Video className="h-5 w-5" />
+                <MoreVertical
+                  ref={profileMenuRef}
+                  className="h-4 w-4 text-[#8E8E93]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowProfileMenu((p) => !p);
+                  }}
+                />
               </button>
             </>
-          ) : (
-            <button
-              ref={moreOptionsRef}
-              onClick={(e) => { e.stopPropagation(); setShowMoreOptions((p) => !p); }}
-              className="relative inline-block p-2 rounded-lg text-[#8E8E93] hover:bg-[#2A2A2C] hover:text-[#FFFFFF] transition-all active:scale-[0.97]" aria-label="More options"
-            >
-              <MoreVertical className="h-5 w-5" />
-            </button>
+          ) : null}
+          {showProfileMenu && (
+            <BulletproofDropdown
+              open={showProfileMenu}
+              onClose={() => setShowProfileMenu(false)}
+              items={[
+                {
+                  label: 'Profile',
+                  icon: <User className="h-4 w-4" />,
+                  onClick: () => {
+                    toast('Profile settings', 'info');
+                  },
+                },
+                {
+                  label: 'Settings',
+                  icon: <Settings className="h-4 w-4" />,
+                  onClick: () => {
+                    toast('Opening settings', 'info');
+                  },
+                },
+              ]}
+            />
           )}
           {showMoreOptions && (
-            <MoreOptionsMenu
-              open={true}
+            <BulletproofDropdown
+              open={showMoreOptions}
               onClose={() => setShowMoreOptions(false)}
-              anchorRef={moreOptionsRef}
-              onClearChat={handleClearChat}
-              onMute={() => toast('Notifications muted', 'info')}
-              onLeaveGroup={() => {
-                toast('Left the group', 'info');
-                setActiveId(null);
-                setShowMoreOptions(false);
-              }}
+              items={[
+                {
+                  label: 'Clear chat history',
+                  onClick: () => {
+                    setShowMoreOptions(false);
+                    handleClearChat();
+                  },
+                },
+                {
+                  label: 'Mute notifications',
+                  onClick: () => {
+                    setShowMoreOptions(false);
+                    toast('Notifications muted', 'info');
+                  },
+                },
+                {
+                  label: 'Leave group',
+                  onClick: () => {
+                    setShowMoreOptions(false);
+                    toast('Left the group', 'info');
+                    setActiveId(null);
+                    setShowMoreOptions(false);
+                  },
+                },
+              ]}
             />
           )}
         </div>
@@ -1603,7 +1312,7 @@ export default function ChatPage() {
                     messages[i - 1]?.senderId !== msg.senderId ||
                     new Date(msg.createdAt).getTime() -
                       new Date(messages[i - 1]?.createdAt ?? 0).getTime() >
-                      5 * 60 * 1000
+                    5 * 60 * 1000
                   }
                   onReaction={handleReaction}
                   searchQuery={chatSearchQuery}
@@ -1640,6 +1349,9 @@ export default function ChatPage() {
     </main>
   );
 
+  /* -------------------------------------------------------------- */
+  /* Desktop copilot pane                                           */
+  /* -------------------------------------------------------------- */
   const desktopCopilot = copilotOpen ? (
     <div className="hidden xl:flex xl:w-[360px] xl:shrink-0 border-l border-[#2A2A2C]">
       <CopilotPanel
@@ -1660,7 +1372,7 @@ export default function ChatPage() {
       <div className="md:hidden h-full">
         {!activeId ? (
           <>
-            {mobileList}
+            <SidebarNavigationContainer />
             {emojiOpen && (
               <EmojiTray open onClose={() => setEmojiOpen(false)} onSelect={handleEmojiSelect} />
             )}
@@ -1672,7 +1384,7 @@ export default function ChatPage() {
 
       {/* DESKTOP 3-PANE: sidebar + main + optional copilot */}
       <div className="hidden md:flex h-[100dvh]">
-        {desktopSidebar}
+        <SidebarNavigationContainer />
         {desktopMain}
         {desktopCopilot}
       </div>
@@ -1713,6 +1425,3 @@ export default function ChatPage() {
     </div>
   );
 }
-
-
-
