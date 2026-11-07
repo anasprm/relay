@@ -20,6 +20,7 @@ import { ChatComposer } from '@/components/chat/ChatComposer';
 import {
   ArrowRight,
   CheckCheck,
+  FileText,
   Image as ImageIcon,
   LogOut,
   Mic,
@@ -49,7 +50,8 @@ import { useRealtimeMessages } from '@/lib/hooks/useRealtimeMessages';
 import { sendMessage } from '@/lib/actions/sendMessage';
 import { toggleReaction } from '@/lib/actions/reactions';
 import { markConversationRead } from '@/lib/actions/reads';
-import type { Conversation, Message, User } from '@/lib/types';
+import { uploadAttachment } from '@/lib/actions/uploadAttachment';
+import type { Attachment, Conversation, Message, User } from '@/lib/types';
 
 /**
  * Writes a message into IndexedDB so it survives reloads and stays available
@@ -425,10 +427,47 @@ function MessageBubble({
           )}
           {message.attachment && (
             <div className="mt-1.5 flex items-center gap-2">
-              <ImageIcon className="h-4 w-4 text-[#8E8E93]" />
-              <span className="text-[10px] text-[#8E8E93] truncate max-w-[140px]">
-                {message.attachment.name}
-              </span>
+              {message.attachment.kind === 'image' && (
+                <img
+                  src={message.attachment.url}
+                  alt={message.attachment.name}
+                  className="max-w-[200px] max-h-[160px] rounded-lg object-cover cursor-pointer"
+                  loading="lazy"
+                />
+              )}
+              {message.attachment.kind === 'video' && (
+                <video
+                  src={message.attachment.url}
+                  className="max-w-[200px] max-h-[160px] rounded-lg object-cover"
+                  controls
+                  preload="metadata"
+                />
+              )}
+              {message.attachment.kind === 'audio' && (
+                <audio
+                  src={message.attachment.url}
+                  className="w-[200px]"
+                  controls
+                  preload="metadata"
+                />
+              )}
+              {message.attachment.kind === 'file' && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#121214] border border-[#2A2A2C]">
+                  <FileText className="w-4 h-4 text-[#8E8E93]" />
+                  <span className="text-[11px] text-[#8E8E93] truncate max-w-[120px]">
+                    {message.attachment.name}
+                  </span>
+                  <a
+                    href={message.attachment.url}
+                    download
+                    className="text-xs text-[#25D366] hover:underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Download
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
@@ -796,7 +835,12 @@ export default function ChatPage() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
   const [callType, setCallType] = useState<'audio' | 'video'>('audio');
-  const [pendingAttachment, setPendingAttachment] = useState<{ name: string } | null>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<{
+    name: string;
+    dataUrl: string;
+    mimeType: string;
+    size: number;
+  } | null>(null);
   const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [chatSearchOpen, setChatSearchOpen] = useState(false);
   const moreOptionsRef = useRef<HTMLButtonElement>(null);
@@ -1189,23 +1233,32 @@ export default function ChatPage() {
       return;
     }
 
-    // Non-AI conversation: mock store
+    // Non-AI conversation: upload attachment first if present,
+    // then create optimistic message with the real attachment URL.
+    let attachment: Attachment | null = null;
+    if (pendingAttachment) {
+      const uploadResult = await uploadAttachment({
+        token,
+        conversationId: activeId || '',
+        dataUrl: pendingAttachment.dataUrl,
+        fileName: pendingAttachment.name,
+        mimeType: pendingAttachment.mimeType,
+      });
+      if (!uploadResult.success) {
+        toast('Upload failed: ' + uploadResult.error, 'error');
+        return;
+      }
+      attachment = uploadResult.attachment;
+    }
+
     const newMessage: Message = {
       id: `msg_${Date.now()}`,
       conversationId: activeId || 'conv_general_community',
       senderId: 'usr_me',
       sender: MOCK_USER,
-      kind: 'text',
+      kind: attachment ? attachment.kind : 'text',
       text,
-      attachment: pendingAttachment
-        ? {
-            url: '',
-            name: pendingAttachment.name,
-            mime: 'image/*',
-            size: 0,
-            kind: 'image',
-          }
-        : null,
+      attachment,
       anonymous: false,
       ephemeral: false,
       viewOnce: false,
@@ -1240,8 +1293,8 @@ export default function ChatPage() {
         token,
         conversationId: activeId,
         body: text,
-        kind: 'text',
-        attachment: newMessage.attachment,
+        kind: newMessage.kind,
+        attachment,
         clientId: newMessage.id,
       })
         .then((result) => {
@@ -1253,12 +1306,25 @@ export default function ChatPage() {
           console.error('[chat] Supabase sync failed:', error);
         });
     }
-  }, [draft, pendingAttachment, activeId, token]);
+  }, [draft, pendingAttachment, activeId, token, toast]);
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setPendingAttachment({ name: file.name });
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    setPendingAttachment({
+      name: file.name,
+      dataUrl,
+      mimeType: file.type,
+      size: file.size,
+    });
     toast(`Attached: ${file.name}`, 'success');
   }, [toast]);
 
