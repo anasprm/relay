@@ -27,6 +27,13 @@ interface UseRealtimeMessagesParams {
   onNewMessage: (message: Message) => void;
   /** Fired when another tab/user changes a reaction on a message. */
   onReactionUpdate?: (update: { messageId: string; reactions: Record<string, string> }) => void;
+  /** Fired when another user marks messages in this conversation as read. */
+  onMessageRead?: (update: {
+    conversationId: string;
+    userId: string;
+    messageIds: string[];
+    readAt: string;
+  }) => void;
   onError?: (error: Error) => void;
 }
 
@@ -34,11 +41,13 @@ export function useRealtimeMessages({
   conversationId,
   onNewMessage,
   onReactionUpdate,
+  onMessageRead,
   onError,
 }: UseRealtimeMessagesParams) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const onNewMessageRef = useRef(onNewMessage);
   const onReactionUpdateRef = useRef(onReactionUpdate);
+  const onMessageReadRef = useRef(onMessageRead);
   const onErrorRef = useRef(onError);
   const warnedRef = useRef(false);
 
@@ -46,8 +55,9 @@ export function useRealtimeMessages({
   useEffect(() => {
     onNewMessageRef.current = onNewMessage;
     onReactionUpdateRef.current = onReactionUpdate;
+    onMessageReadRef.current = onMessageRead;
     onErrorRef.current = onError;
-  }, [onNewMessage, onReactionUpdate, onError]);
+  }, [onNewMessage, onReactionUpdate, onMessageRead, onError]);
 
   const subscribe = useCallback(() => {
     if (!conversationId) return;
@@ -87,6 +97,17 @@ export function useRealtimeMessages({
       .on('broadcast', { event: 'reaction' }, ({ payload }) => {
         const update = normalizeReactionUpdate(payload);
         if (update) onReactionUpdateRef.current?.(update);
+      })
+      // Read receipts broadcast when someone views the conversation.
+      .on('broadcast', { event: 'message_read' }, ({ payload }) => {
+        try {
+          const update = normalizeMessageReadUpdate(payload);
+          if (update) onMessageReadRef.current?.(update);
+        } catch (err) {
+          onErrorRef.current?.(
+            err instanceof Error ? err : new Error('Failed to parse read receipt'),
+          );
+        }
       })
       .on(
         'postgres_changes',
@@ -197,6 +218,32 @@ function normalizeReactionUpdate(
   }
 
   return { messageId: payload.messageId, reactions };
+}
+
+/**
+ * Read-receipt broadcast payloads are
+ * `{ conversationId, userId, messageIds, readAt }`.
+ */
+function normalizeMessageReadUpdate(
+  payload: any,
+): {
+  conversationId: string;
+  userId: string;
+  messageIds: string[];
+  readAt: string;
+} | null {
+  if (!payload || typeof payload !== 'object') return null;
+  if (typeof payload.conversationId !== 'string' || !payload.conversationId)
+    return null;
+  if (typeof payload.userId !== 'string' || !payload.userId) return null;
+  if (!Array.isArray(payload.messageIds)) return null;
+
+  return {
+    conversationId: payload.conversationId,
+    userId: payload.userId,
+    messageIds: payload.messageIds.filter((id: any) => typeof id === 'string'),
+    readAt: typeof payload.readAt === 'string' ? payload.readAt : new Date().toISOString(),
+  };
 }
 
 /**

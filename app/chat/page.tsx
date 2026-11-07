@@ -48,6 +48,7 @@ import { dbPutConversation, dbGetAllConversations, dbPutMessage } from '@/lib/db
 import { useRealtimeMessages } from '@/lib/hooks/useRealtimeMessages';
 import { sendMessage } from '@/lib/actions/sendMessage';
 import { toggleReaction } from '@/lib/actions/reactions';
+import { markConversationRead } from '@/lib/actions/reads';
 import type { Conversation, Message, User } from '@/lib/types';
 
 /**
@@ -366,7 +367,6 @@ function MessageBubble({
   const time = formatTime(message.createdAt);
   const myReactionId = isMe ? 'usr_me' : '';
   const myReaction = myReactionId ? message.reactions?.[myReactionId] : null;
-  const readByMe = isMe && message.readBy?.includes('usr_me');
   const isSingleEmoji =
     message.text.trim().length <= 3 &&
     /^[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F000}-\u{1FAFF}]$/u.test(
@@ -441,19 +441,25 @@ function MessageBubble({
                 style={{ bottom: '-1px', right: '-1px' }}
               />
             )}
-            <time dateTime={message.createdAt} className="text-[10px] text-[#8E8E93]">
-              {time}
-            </time>
             {isMe && (
               <span className="ml-0.5 inline-flex items-center">
-                {readByMe ? (
+                {/* Ticks: single gray = sent, double blue = read by a recipient */}
+                {message.readBy?.some((id) => id !== 'usr_me') ? (
                   <CheckCheck size={13} className="text-[#25D366]" />
                 ) : (
                   <span className="text-[#8E8E93]/70 relative top-[px]">
                     ✓
                   </span>
                 )}
+                <time dateTime={message.createdAt} className="ml-1 text-[10px] text-[#8E8E93]">
+                  {time}
+                </time>
               </span>
+            )}
+            {!isMe && (
+              <time dateTime={message.createdAt} className="text-[10px] text-[#8E8E93]">
+                {time}
+              </time>
             )}
           </div>
 
@@ -918,6 +924,19 @@ export default function ChatPage() {
         [messageId]: reactions,
       }));
     },
+    onMessageRead: ({ conversationId, userId, messageIds }) => {
+      // A recipient marked messages as read. Update our outgoing messages'
+      // readBy so the sender's ticks flip to blue.
+      if (userId === user?.id) return; // our own read, no change needed
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (!messageIds.includes(m.id)) return m;
+          if (m.senderId !== user?.id) return m; // only our outgoing messages
+          if (m.readBy?.includes(userId)) return m; // already recorded
+          return { ...m, readBy: [...(m.readBy ?? []), userId] };
+        }),
+      );
+    },
     onError: (err) => {
       console.warn('[Realtime] Subscription error:', err.message);
     },
@@ -957,6 +976,17 @@ export default function ChatPage() {
     }
 
     setActiveId(conv.id);
+
+    // Mark messages as read now that the user is viewing this conversation.
+    if (token) {
+      markConversationRead({ token, conversationId: conv.id })
+        .then((result) => {
+          if (!result.success) {
+            console.debug('[chat] markConversationRead skipped:', result.error);
+          }
+        })
+        .catch((err) => console.error('[chat] markConversationRead failed:', err));
+    }
     if (conv.id === 'conv_general_community') {
       setMessages(MOCK_MESSAGES);
     } else if (conv.id === 'conv_relay_assistant') {
